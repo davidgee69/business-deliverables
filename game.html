@@ -610,43 +610,45 @@ function drawInstructionsScreen() {
   g.addColorStop(0, '#1a2a5e'); g.addColorStop(1, '#0d1b3e');
   ctx.fillStyle = g; ctx.fillRect(0, 0, canvasW, canvasH);
 
-  ctx.save(); ctx.textAlign = 'center';
+  const cx = canvasW / 2;
+  ctx.textAlign = 'center';
 
-  ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#fff';
-  ctx.shadowColor = '#4a8fdd'; ctx.shadowBlur = 15;
-  ctx.fillText('HOW TO PLAY', canvasW / 2, canvasH * 0.10);
-  ctx.shadowBlur = 0;
-  ctx.font = '16px Arial'; ctx.fillStyle = '#ffd700';
-  ctx.fillText('⚠️ Starts easy — gets harder the closer you get to home!', canvasW / 2, canvasH * 0.18);
+  // Big red header
+  ctx.font = 'bold 19px Arial'; ctx.fillStyle = '#ff3333';
+  ctx.fillText('⚠️ READ THIS EVEN IF YOU DON\'T FEEL LIKE IT ⚠️', cx, canvasH * 0.08);
+
+  // Title
+  ctx.font = 'bold 24px Arial'; ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#4a8fdd'; ctx.shadowBlur = 12;
+  ctx.fillText('HOW TO PLAY', cx, canvasH * 0.16);
   ctx.shadowBlur = 0;
 
-  const instructions = [
-    ['👆', 'TAP ANYWHERE on screen to fly up — like Flappy Bird!'],
-    ['✈️', 'Keep tapping to stay in the air. Stop tapping = you fall.'],
-    ['🌬️', 'Fly through the GAP in windmills'],
-    ['🦑', 'Dodge Old Gregg\'s tentacles in the Atlantic'],
-    ['🍜', 'Ramen = speed boost'],
-    ['🥛', 'Bailey\'s = invincible'],
-    ['🐱', 'Bunny = extra life'],
-    ['🤖', 'Avoid Dad\'s AI — it crashes things'],
-    ['🌭', 'Touch the hot dog guy for bonus points'],
+  // Difficulty warning
+  ctx.font = 'bold 14px Arial'; ctx.fillStyle = '#ffd700';
+  ctx.fillText('Starts easy — gets harder the closer you get to home!', cx, canvasH * 0.23);
+
+  // Instructions — each line fully centered as one unit
+  const lines = [
+    '👆 TAP ANYWHERE to fly up — like Flappy Bird!',
+    '✈️ Keep tapping to stay up. Stop tapping = you fall.',
+    '🌬️ Fly through the GAP in the brown windmills',
+    '🦑 Dodge tentacles in the Atlantic (zone 2)',
+    '🍜 Ramen = speed boost  •  🥛 Bailey\'s = invincible',
+    '🐱 Bunny = extra life  •  🤖 Avoid Dad\'s AI',
+    '🌭 Touch the hot dog guy for bonus points',
   ];
 
-  instructions.forEach(([emoji, text], i) => {
-    const y = canvasH * 0.24 + i * (canvasH * 0.075);
-    ctx.font = '22px Arial'; ctx.textAlign = 'right';
-    ctx.fillStyle = '#fff'; ctx.fillText(emoji, canvasW / 2 - 10, y);
-    ctx.font = '15px Arial'; ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(255,255,255,0.88)';
-    ctx.fillText(text, canvasW / 2, y);
+  ctx.font = '14px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  const lineH = canvasH * 0.072;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, cx, canvasH * 0.31 + i * lineH);
   });
 
-  const pulse = 0.85 + Math.sin(STATE.frame * 0.06) * 0.15;
-  ctx.save(); ctx.globalAlpha = pulse; ctx.textAlign = 'center';
-  ctx.font = 'bold 18px Arial'; ctx.fillStyle = '#fff';
-  ctx.fillText('TAP TO BEGIN ✈️', canvasW / 2, canvasH * 0.92);
-  ctx.restore();
-
+  // Pulse tap to begin
+  const pulse = 0.75 + Math.sin(STATE.frame * 0.06) * 0.25;
+  ctx.save(); ctx.globalAlpha = pulse;
+  ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#fff';
+  ctx.fillText('TAP TO BEGIN ✈️', cx, canvasH * 0.93);
   ctx.restore();
 }
 
