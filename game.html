@@ -335,8 +335,24 @@ function flap() {
   }
 }
 
-canvas.addEventListener('click', flap);
-canvas.addEventListener('touchstart', (e) => { e.preventDefault(); flap(); }, { passive: false });
+function handleTap(clientX, clientY) {
+  if (STATE.screen === 'instructions') {
+    const rect = canvas.getBoundingClientRect();
+    const tapY = (clientY - rect.top) / rect.height * canvasH;
+    if (tapY > canvasH * 0.88) {
+      startGame(); // skip zone — bottom of screen
+    } else if (STATE.instructionPage < 6) {
+      STATE.instructionPage++;
+    } else {
+      startGame();
+    }
+    return;
+  }
+  flap();
+}
+
+canvas.addEventListener('click', (e) => handleTap(e.clientX, e.clientY));
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.touches[0]; handleTap(t.clientX, t.clientY); }, { passive: false });
 
 // ─── OBSTACLES ────────────────────────────────────────────────────────────────
 function getDynamicGap() {
@@ -698,12 +714,23 @@ function drawInstructionsScreen() {
   ctx.save(); ctx.globalAlpha = pulse; ctx.textAlign = 'center';
   if (p < 6) {
     ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#fff';
-    ctx.fillText('Tap for next →', cx, canvasH * 0.88);
+    ctx.fillText('Tap for next →', cx, canvasH * 0.82);
   } else {
     ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#6bcb77';
-    ctx.fillText('TAP TO BEGIN ✈️', cx, canvasH * 0.88);
+    ctx.fillText('TAP TO BEGIN ✈️', cx, canvasH * 0.82);
   }
   ctx.restore();
+
+  // Skip link (bottom strip — tap here to skip)
+  if (p < 6) {
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.textAlign = 'center';
+    ctx.font = '13px Arial';
+    ctx.fillStyle = '#aac8ff';
+    ctx.fillText('Skip instructions — I already know how to play  →  tap here to begin', cx, canvasH * 0.94);
+    ctx.restore();
+  }
 }
 
 // ─── SCREEN: START ────────────────────────────────────────────────────────────
