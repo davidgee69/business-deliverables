@@ -685,8 +685,9 @@ function drawInstructionsScreen() {
   ctx.textAlign = 'center';
 
   if (p === 0) {
-    ctx.font = 'bold 17px Arial'; ctx.fillStyle = '#ff3333';
-    ctx.fillText('⚠️ READ THIS EVEN IF YOU DON\'T FEEL LIKE IT ⚠️', cx, canvasH * 0.18);
+    ctx.font = `bold ${Math.round(canvasW * 0.042)}px Arial`; ctx.fillStyle = '#ff3333';
+    ctx.fillText('⚠️ READ THIS EVEN IF YOU', cx, canvasH * 0.14);
+    ctx.fillText("DON'T FEEL LIKE IT ⚠️", cx, canvasH * 0.20);
     ctx.font = 'bold 34px Arial'; ctx.fillStyle = '#fff';
     ctx.fillText('👆 TAP ANYWHERE', cx, canvasH * 0.38);
     ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#87ceeb';
@@ -767,9 +768,10 @@ function drawInstructionsScreen() {
     ctx.save();
     ctx.globalAlpha = 0.85;
     ctx.textAlign = 'center';
-    ctx.font = 'bold 17px Arial';
+    ctx.font = `bold ${Math.round(canvasW * 0.042)}px Arial`;
     ctx.fillStyle = '#aac8ff';
-    ctx.fillText('Skip — I already know how to play. Tap here to begin.', cx, canvasH * 0.94);
+    ctx.fillText('Skip — I already know how to play.', cx, canvasH * 0.92);
+    ctx.fillText('Tap here to begin.', cx, canvasH * 0.97);
     ctx.restore();
   }
 }
