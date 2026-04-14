@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Eirene's Great Escape ✈️</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const CONFIG = {
+  gravity: 0.07,
+  flapForce: -4.2,
+  baseScrollSpeed: 0.5,
+  totalDistance: 9000,
+  zoneLength: 3000,
+  groundH: 55,
+  playerX: null,
+  obstacleGap: 600,      // starts enormous, shrinks with distance
+  obstacleW: 58,
+  minObstacleSpacing: 900,
+  collectibleSize: 28,
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const STATE = {
+  screen: 'start',
+  player: { y: 0, vy: 0, w: 52, h: 28,
+            lives: 9, invincible: false, invincibleTimer: 0,
+            speedBoost: false, speedTimer: 0,
+            multiplier: 1, multiplierTimer: 0, wobble: 0 },
+  obstacles: [], collectibles: [], particles: [], events: [],
+  hotDogGuy: null,
+  score: 0, distance: 0,
+  scrollSpeed: 3,
+  zone: 0,
+  zoneLabel: { text: '', alpha: 0 },
+  deathQuoteIdx: 0, frame: 0,
+  oldGreggWarningTimer: 0,
+  iasylTimer: 0, nextIasyl: 1800,
+  aiRobotTimer: 0, nextAiRobot: 600,
+  nextHotDog: 2400,
+  instructionPage: 0,
+  gameFrames: 0,
+  currentLevel: 1,
+  levelUpFlash: { text: '', alpha: 0 },
+};
+
+const DEATH_QUOTES = [
+  "ARE YOU PLAYING GAMES WITH OLD GREGG?!",
+  "You're going to look at it.",
+  "I got the funk. Have you got the funk?",
+  "This game was made with AI. That's probably why it's broken.",
+  "Do you want to come to a party at the end of the universe?",
+  "STOP TALKING. STOP TALKING. (you crashed)",
+];
+
+function loseLife() {
+  if (STATE.player.invincible) return;
+  STATE.player.lives--;
+  if (STATE.player.lives <= 0) {
+    STATE.screen = 'dead';
+    STATE.deathQuoteIdx = Math.floor(Math.random() * DEATH_QUOTES.length);
+  } else {
+    STATE.player.y = canvasH * 0.45;
+    STATE.player.vy = -1.5 * (canvasH / 800);
+    STATE.player.invincible = true;
+    STATE.player.invincibleTimer = 150;
+  }
+}
+
+// ─── DRAW: BACKGROUND ─────────────────────────────────────────────────────────
+function drawBackground() {
+  const z = STATE.zone;
+
+  if (z === 0) {
+    // Europe: sky blue gradient
+    const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+    g.addColorStop(0, '#87CEEB');
+    g.addColorStop(1, '#c8e6c9');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Scrolling tulip fields on ground
+    const offset = (STATE.distance * 0.5) % 120;
+    for (let x = -offset; x < canvasW + 120; x += 120) {
+      drawTulip(x + 20, canvasH - CONFIG.groundH);
+      drawTulip(x + 70, canvasH - CONFIG.groundH);
+    }
+
+    // Windmill silhouettes on horizon
+    const wOff = (STATE.distance * 0.3) % 300;
+    for (let x = -wOff; x < canvasW + 300; x += 300) {
+      drawWindmillSilhouette(x, canvasH - CONFIG.groundH - 40);
+    }
+  } else if (z === 1) {
+    // Atlantic: dark ocean
+    const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+    g.addColorStop(0, '#1a2a4a');
+    g.addColorStop(0.5, '#0d3b6e');
+    g.addColorStop(1, '#051935');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Eerie green glow at bottom (Old Gregg vibes)
+    const og = ctx.createLinearGradient(0, canvasH - 200, 0, canvasH);
+    og.addColorStop(0, 'rgba(0,255,100,0)');
+    og.addColorStop(1, 'rgba(0,255,100,0.15)');
+    ctx.fillStyle = og;
+    ctx.fillRect(0, canvasH - 200, canvasW, 200);
+
+    // Waves
+    drawWaves();
+  } else {
+    // America: warm sunset
+    const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+    g.addColorStop(0, '#ff9a3c');
+    g.addColorStop(0.4, '#ffcc70');
+    g.addColorStop(1, '#c8e6c9');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Clouds
+    const cOff = (STATE.distance * 0.4) % 350;
+    for (let x = -cOff; x < canvasW + 350; x += 350) {
+      drawCloud(x + 80, canvasH * 0.25);
+      drawCloud(x + 250, canvasH * 0.15);
+    }
+  }
+}
+
+function drawTulip(x, y) {
+  ctx.fillStyle = '#e53935';
+  ctx.beginPath();
+  ctx.arc(x, y - 10, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#43a047';
+  ctx.fillRect(x - 1, y - 10, 2, 18);
+}
+
+function drawWindmillSilhouette(x, y) {
+  ctx.fillStyle = 'rgba(100,120,100,0.4)';
+  ctx.fillRect(x - 3, y - 50, 6, 50);
+  const angle = STATE.frame * 0.015;
+  ctx.save();
+  ctx.translate(x, y - 50);
+  ctx.rotate(angle);
+  ctx.fillStyle = 'rgba(100,120,100,0.4)';
+  for (let i = 0; i < 4; i++) {
+    ctx.save();
+    ctx.rotate((Math.PI / 2) * i);
+    ctx.fillRect(-2, -22, 4, 22);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawWaves() {
+  const offset = (STATE.distance * 0.8) % canvasW;
+  ctx.strokeStyle = 'rgba(0,200,255,0.2)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    const y = canvasH * 0.65 + i * 30;
+    ctx.beginPath();
+    for (let x = -offset; x < canvasW + 60; x += 60) {
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x + 15, y - 8, x + 45, y + 8, x + 60, y);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawCloud(x, y) {
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.beginPath();
+  ctx.arc(x, y, 22, 0, Math.PI * 2);
+  ctx.arc(x + 25, y - 8, 18, 0, Math.PI * 2);
+  ctx.arc(x + 48, y, 20, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawGround() {
+  const z = STATE.zone;
+  const colors = ['#5d8a3c', '#1a4a6e', '#6aaa55'];
+  ctx.fillStyle = colors[z];
+  ctx.fillRect(0, canvasH - CONFIG.groundH, canvasW, CONFIG.groundH);
+
+  if (z === 2) {
+    const tOff = (STATE.distance * 0.5) % 400;
+    for (let x = -tOff; x < canvasW + 400; x += 400) {
+      drawThriftStoreSilhouette(x + 80);
+      drawThriftStoreSilhouette(x + 260);
+    }
+  }
+}
+
+function drawThriftStoreSilhouette(x) {
+  const y = canvasH - CONFIG.groundH;
+  ctx.fillStyle = 'rgba(80,50,30,0.5)';
+  ctx.fillRect(x, y - 35, 50, 35);
+  ctx.fillStyle = 'rgba(60,30,10,0.5)';
+  ctx.fillRect(x - 5, y - 42, 60, 10);
+  ctx.fillStyle = 'rgba(200,180,50,0.6)';
+  ctx.fillRect(x + 8, y - 28, 34, 12);
+}
+
+function drawZoneLabel() {
+  if (STATE.zoneLabel.alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = STATE.zoneLabel.alpha;
+  ctx.font = 'bold 22px Arial';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 8;
+  ctx.fillText(STATE.zoneLabel.text, canvasW / 2, canvasH * 0.15);
+  ctx.restore();
+}
+
+// ─── CANVAS ───────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let canvasW = 0, canvasH = 0;
+
+const isMobile = () => ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+const isPortrait = () => window.innerHeight > window.innerWidth;
+
+function resize() {
+  canvasW = canvas.width = window.innerWidth;
+  canvasH = canvas.height = window.innerHeight;
+  CONFIG.playerX = canvasW * 0.2;
+  if (STATE.screen === 'start') STATE.player.y = canvasH * 0.45;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── DRAW: PLANE ──────────────────────────────────────────────────────────────
+function planeScale() {
+  return Math.max(0.5, Math.min(1.4, canvasW / 1000));
+}
+
+function drawPlane() {
+  const p = STATE.player;
+  const x = CONFIG.playerX;
+  const y = p.y + (p.wobble > 0 ? Math.sin(p.wobble * 0.8) * 6 : 0);
+  if (p.wobble > 0) p.wobble--;
+  const s = planeScale();
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  if (p.invincible && Math.floor(STATE.frame / 6) % 2 === 0) ctx.globalAlpha = 0.4;
+
+  // Body
+  ctx.fillStyle = '#f0f0f0';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 26, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wing (top)
+  ctx.fillStyle = '#4a8fdd';
+  ctx.beginPath();
+  ctx.moveTo(-4, -2); ctx.lineTo(12, -22); ctx.lineTo(18, -2);
+  ctx.closePath(); ctx.fill();
+
+  // Tail fin
+  ctx.beginPath();
+  ctx.moveTo(-22, -1); ctx.lineTo(-12, -14); ctx.lineTo(-10, -1);
+  ctx.closePath(); ctx.fill();
+
+  // Window
+  ctx.fillStyle = '#b8e0f7';
+  ctx.beginPath(); ctx.arc(8, -1, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1; ctx.stroke();
+
+  ctx.restore();
+
+  // keep collision box in sync with visual size
+  p.w = 52 * s; p.h = 28 * s;
+}
+
+// ─── INPUT ────────────────────────────────────────────────────────────────────
+function resetGame() {
+  STATE.screen = 'start';
+  STATE.player.y = canvasH * 0.45;
+  STATE.player.vy = 0;
+  STATE.player.lives = 9;
+  STATE.player.invincible = false;
+  STATE.player.invincibleTimer = 0;
+  STATE.player.speedBoost = false;
+  STATE.player.speedTimer = 0;
+  STATE.player.multiplier = 1;
+  STATE.player.multiplierTimer = 0;
+  STATE.player.wobble = 0;
+  STATE.obstacles = [];
+  STATE.collectibles = [];
+  STATE.particles = [];
+  STATE.events = [];
+  STATE.hotDogGuy = null;
+  STATE.score = 0;
+  STATE.distance = 0;
+  STATE.scrollSpeed = CONFIG.baseScrollSpeed;
+  STATE.zone = 0;
+  STATE.zoneLabel = { text: '', alpha: 0 };
+  STATE.frame = 0;
+  STATE.oldGreggWarningTimer = 0;
+  STATE.iasylTimer = 0;
+  STATE.nextIasyl = 1800;
+  STATE.aiRobotTimer = 0;
+  STATE.nextAiRobot = 600;
+  STATE.nextHotDog = 2400;
+  STATE.instructionPage = 0;
+  STATE.gameFrames = 0;
+  STATE.currentLevel = 1;
+  STATE.levelUpFlash = { text: '', alpha: 0 };
+}
+
+function startGame() {
+  resetGame();
+  STATE.screen = 'game';
+}
+
+function flap() {
+  if (STATE.screen === 'game') {
+    const mobileMult = isMobile() ? 0.65 : 1.0;
+    STATE.player.vy = CONFIG.flapForce * (canvasH / 800) * mobileMult;
+  } else if (STATE.screen === 'start') {
+    STATE.screen = 'instructions';
+  } else if (STATE.screen === 'instructions') {
+    if (STATE.instructionPage < 6) {
+      STATE.instructionPage++;
+    } else {
+      startGame();
+    }
+  } else if (STATE.screen === 'dead' || STATE.screen === 'win') {
+    resetGame();
+  }
+}
+
+function handleTap(clientX, clientY) {
+  if (isMobile() && isPortrait()) return; // blocked — rotate prompt is showing
+  if (STATE.screen === 'instructions') {
+    const rect = canvas.getBoundingClientRect();
+    const tapY = (clientY - rect.top) / rect.height * canvasH;
+    if (tapY > canvasH * 0.88) {
+      startGame(); // skip zone — bottom of screen
+    } else if (STATE.instructionPage < 6) {
+      STATE.instructionPage++;
+    } else {
+      startGame();
+    }
+    return;
+  }
+  flap();
+}
+
+canvas.addEventListener('click', (e) => handleTap(e.clientX, e.clientY));
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.touches[0]; handleTap(t.clientX, t.clientY); }, { passive: false });
+
+// ─── OBSTACLES ────────────────────────────────────────────────────────────────
+function getDifficulty() {
+  const f = STATE.gameFrames;
+  if (f < 3600)  return 1;
+  if (f < 7200)  return 2;
+  if (f < 10800) return 3;
+  if (f < 14400) return 4;
+  return 5;
+}
+
+function getDynamicGap() {
+  return [600, 600, 560, 450, 330, 240][getDifficulty()];
+}
+
+function spawnObstacle() {
+  const z = STATE.zone;
+  const gap = getDynamicGap();
+  const gapCenter = CONFIG.groundH + gap + Math.random() * (canvasH - CONFIG.groundH - gap * 2.2 - 60);
+  const x = canvasW + 10;
+
+  if (z === 0 || z === 2) {
+    STATE.obstacles.push({
+      type: 'windmill', x,
+      gapCenter,
+      topH: gapCenter - gap / 2,
+      bottomY: gapCenter + gap / 2,
+      bottomH: canvasH - CONFIG.groundH - (gapCenter + gap / 2),
+      w: CONFIG.obstacleW,
+      angle: 0,
+    });
+  } else {
+    if (Math.random() < 0.5) {
+      STATE.obstacles.push({ type: 'tentacle', x, gapCenter, w: CONFIG.obstacleW, collisionTopY: 0, collisionH: 0 });
+    } else {
+      STATE.obstacles.push({ type: 'fog', x, gapCenter, gap, w: 70 });
+    }
+  }
+}
+
+function spawnAiRobot() {
+  STATE.obstacles.push({
+    type: 'ai_robot',
+    x: canvasW + 20,
+    cx: canvasW + 20,
+    cy: 80 + Math.random() * (canvasH - CONFIG.groundH - 140),
+    w: 50, h: 50,
+    speed: (CONFIG.baseScrollSpeed + STATE.distance * 0.0003) * 1.2,
+  });
+}
+
+function updateObstacles() {
+  const lvl = getDifficulty();
+  if (lvl === 1) return; // no obstacles first full minute
+
+  const spacingByLevel = [900, 900, 860, 740, 580, 460];
+  const spacing = spacingByLevel[lvl];
+
+  const lastX = STATE.obstacles.filter(o => o.type !== 'ai_robot').length
+    ? STATE.obstacles.filter(o => o.type !== 'ai_robot').slice(-1)[0].x
+    : -999;
+  if (canvasW - lastX > spacing) spawnObstacle();
+
+  STATE.obstacles.forEach(o => {
+    if (o.type === 'ai_robot') { o.x -= o.speed; o.cx = o.x; }
+    else { o.x -= STATE.scrollSpeed; }
+    if (o.type === 'windmill') o.angle += 0.025;
+  });
+
+  STATE.obstacles = STATE.obstacles.filter(o => o.x + (o.w || 60) + 60 > 0);
+}
+
+function drawObstacles() {
+  STATE.obstacles.forEach(o => {
+    if (o.type === 'windmill') drawWindmill(o);
+    else if (o.type === 'tentacle') drawTentacle(o);
+    else if (o.type === 'fog') drawFogWall(o);
+    else if (o.type === 'ai_robot') drawAiRobot(o);
+  });
+}
+
+function drawWindmill(o) {
+  ctx.fillStyle = '#8B7355';
+  ctx.fillRect(o.x, 0, o.w, o.topH);
+  ctx.fillRect(o.x, o.bottomY, o.w, o.bottomH);
+  const bx = o.x + o.w / 2;
+  const by = o.topH;
+  ctx.save();
+  ctx.translate(bx, by);
+  ctx.rotate(o.angle);
+  ctx.fillStyle = '#a0855b';
+  for (let i = 0; i < 4; i++) {
+    ctx.save(); ctx.rotate((Math.PI / 2) * i);
+    ctx.fillRect(-3, -28, 6, 28); ctx.restore();
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#6b5335'; ctx.lineWidth = 2;
+  ctx.strokeRect(o.x, 0, o.w, o.topH);
+  ctx.strokeRect(o.x, o.bottomY, o.w, o.bottomH);
+}
+
+function drawTentacle(o) {
+  const h = (canvasH - CONFIG.groundH) * 0.55 + Math.sin(STATE.frame * 0.04 + o.x * 0.01) * 30;
+  const topY = canvasH - CONFIG.groundH - h;
+  o.collisionTopY = topY;
+  o.collisionH = h;
+  ctx.fillStyle = '#1a7a3a';
+  ctx.beginPath();
+  ctx.moveTo(o.x, canvasH - CONFIG.groundH);
+  ctx.bezierCurveTo(o.x - 15, topY + h * 0.6, o.x + 15, topY + h * 0.3, o.x + o.w / 2, topY);
+  ctx.bezierCurveTo(o.x + o.w - 15, topY + h * 0.3, o.x + o.w + 15, topY + h * 0.6, o.x + o.w, canvasH - CONFIG.groundH);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#0d5522'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#0d8a3a';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.arc(o.x + o.w / 2 + Math.sin(i) * 5, topY + h * 0.2 + i * (h * 0.15), 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawFogWall(o) {
+  ctx.fillStyle = 'rgba(180,200,220,0.75)';
+  ctx.fillRect(o.x, 0, o.w, o.gapCenter - o.gap / 2);
+  ctx.fillRect(o.x, o.gapCenter + o.gap / 2, o.w, canvasH - CONFIG.groundH - (o.gapCenter + o.gap / 2));
+}
+
+function drawAiRobot(o) {
+  ctx.save();
+  ctx.font = '38px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🤖', o.cx, o.cy);
+  ctx.font = 'bold 11px Arial'; ctx.fillStyle = '#ff4444'; ctx.textBaseline = 'top';
+  ctx.fillText("DAD'S AI", o.cx, o.cy + 22);
+  ctx.restore();
+}
+
+// ─── COLLECTIBLES ─────────────────────────────────────────────────────────────
+const COLLECTIBLES_DEF = [
+  { type: 'ramen',   emoji: '🍜', color: '#ff6b35', prob: 0.30 },
+  { type: 'mac',     emoji: '🧀', color: '#ffcc00', prob: 0.25 },
+  { type: 'baileys', emoji: '🥛', color: '#d4a017', prob: 0.15 },
+  { type: 'bunny',   emoji: '🐱', color: '#ffaacc', prob: 0.20 },
+  { type: 'thrift',  emoji: '👗', color: '#9b59b6', prob: 0.10 },
+];
+
+function spawnCollectible() {
+  const r = Math.random(); let cum = 0; let chosen = COLLECTIBLES_DEF[0];
+  for (const c of COLLECTIBLES_DEF) { cum += c.prob; if (r < cum) { chosen = c; break; } }
+  if (chosen.type === 'thrift' && STATE.zone !== 2) chosen = COLLECTIBLES_DEF[0];
+  const y = 60 + Math.random() * (canvasH - CONFIG.groundH - 120);
+  STATE.collectibles.push({ ...chosen, x: canvasW + 20, y, collected: false, alpha: 1 });
+}
+
+function updateCollectibles() {
+  const collectibleSpacing = [160, 160, 220, 340, 480, 620];
+  const spacing = collectibleSpacing[getDifficulty()] + Math.random() * 80;
+  const lastX = STATE.collectibles.length ? STATE.collectibles[STATE.collectibles.length - 1].x : -999;
+  if (canvasW - lastX > spacing || STATE.collectibles.length === 0) spawnCollectible();
+  STATE.collectibles.forEach(c => { c.x -= STATE.scrollSpeed; if (c.collected) c.alpha -= 0.08; });
+  STATE.collectibles = STATE.collectibles.filter(c => c.x + 40 > 0 && c.alpha > 0);
+}
+
+function drawCollectibles() {
+  const s = CONFIG.collectibleSize;
+  STATE.collectibles.forEach(c => {
+    ctx.save(); ctx.globalAlpha = c.alpha;
+    ctx.beginPath(); ctx.arc(c.x, c.y, s * 0.8, 0, Math.PI * 2);
+    ctx.fillStyle = c.color + '44'; ctx.fill();
+    ctx.font = `${s}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(c.emoji, c.x, c.y); ctx.restore();
+  });
+}
+
+function drawCollectibleArrows() {
+  const px = CONFIG.playerX;
+  const py = STATE.player.y;
+  STATE.collectibles.forEach(c => {
+    if (c.collected) return;
+    const dx = c.x - px;
+    if (dx < 20 || dx > 380) return; // only show for upcoming, nearby items
+    const dy = c.y - py;
+    if (Math.abs(dy) < 30) return; // already lined up, no arrow needed
+    const arrowX = px + 60;
+    const arrowY = py + Math.sign(dy) * 28;
+    const pulse = 0.5 + Math.sin(STATE.frame * 0.12) * 0.3;
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.font = 'bold 18px Arial';
+    ctx.fillStyle = c.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(dy > 0 ? '▼' : '▲', arrowX, arrowY);
+    ctx.restore();
+  });
+}
+
+function applyCollectible(c) {
+  const p = STATE.player; c.collected = true;
+  if (c.type === 'ramen') {
+    p.speedBoost = true; p.speedTimer = 180; STATE.score += 100;
+    showFloatingText(c.x, c.y, '+100 🍜 SPEED!', '#ff6b35');
+  } else if (c.type === 'mac') {
+    p.multiplier = 2; p.multiplierTimer = 300; STATE.score += 50;
+    showFloatingText(c.x, c.y, '2x MAC POWER', '#ffcc00');
+  } else if (c.type === 'baileys') {
+    p.invincible = true; p.invincibleTimer = 180; STATE.score += 50;
+    showFloatingText(c.x, c.y, "BAILEY'S! INVINCIBLE", '#d4a017');
+  } else if (c.type === 'bunny') {
+    if (p.lives < 9) p.lives++; STATE.score += 200;
+    showFloatingText(c.x, c.y, '+LIFE 🐱 BUNNY!', '#ffaacc');
+  } else if (c.type === 'thrift') {
+    STATE.score += 500;
+    showFloatingText(c.x, c.y, '+500 GOODWILL SCORE', '#9b59b6');
+  }
+}
+
+const floatingTexts = [];
+function showFloatingText(x, y, text, color) {
+  floatingTexts.push({ x, y, text, color, alpha: 1, vy: -1.5 });
+}
+function updateFloatingTexts() {
+  floatingTexts.forEach(t => { t.y += t.vy; t.alpha -= 0.018; });
+  floatingTexts.splice(0, floatingTexts.length, ...floatingTexts.filter(t => t.alpha > 0));
+}
+function drawFloatingTexts() {
+  floatingTexts.forEach(t => {
+    ctx.save(); ctx.globalAlpha = t.alpha;
+    ctx.font = 'bold 16px Arial'; ctx.fillStyle = t.color;
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 3;
+    ctx.textAlign = 'center';
+    ctx.strokeText(t.text, t.x, t.y); ctx.fillText(t.text, t.x, t.y);
+    ctx.restore();
+  });
+}
+
+// ─── COLLISIONS ───────────────────────────────────────────────────────────────
+function checkCollisions() {
+  const p = STATE.player;
+  const px = CONFIG.playerX, py = p.y;
+  const pw = p.w * 0.7, ph = p.h * 0.7;
+
+  if (!p.invincible) {
+    for (const o of STATE.obstacles) {
+      if (o.x > px + pw || o.x + (o.w || 50) < px - pw) continue;
+      if (o.type === 'windmill' || o.type === 'fog') {
+        if (py - ph / 2 < o.topH) { loseLife(); p.wobble = 20; return; }
+        if (py + ph / 2 > o.bottomY) { loseLife(); p.wobble = 20; return; }
+      } else if (o.type === 'tentacle') {
+        if (o.collisionTopY !== undefined && py + ph / 2 > o.collisionTopY) {
+          loseLife(); p.wobble = 20; return;
+        }
+      } else if (o.type === 'ai_robot') {
+        if (Math.hypot(px - o.cx, py - o.cy) < 28) {
+          loseLife(); p.wobble = 30;
+          showFloatingText(px, py - 40, "Sorry, Eirene. Dad let the AI drive again.", '#ff4444');
+          return;
+        }
+      }
+    }
+  }
+
+  for (const c of STATE.collectibles) {
+    if (c.collected) continue;
+    if (Math.hypot(px - c.x, py - c.y) < CONFIG.collectibleSize * 0.9) applyCollectible(c);
+  }
+}
+
+// ─── HUD ──────────────────────────────────────────────────────────────────────
+function drawHUD() {
+  const p = STATE.player;
+  // Score
+  ctx.save(); ctx.font = 'bold 22px Arial'; ctx.fillStyle = '#fff';
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3;
+  ctx.textAlign = 'right';
+  ctx.strokeText(`${STATE.score}`, canvasW - 16, 34);
+  ctx.fillText(`${STATE.score}`, canvasW - 16, 34); ctx.restore();
+
+  // Lives (9 Bunny icons)
+  const maxLives = 9;
+  const iconSize = Math.round(canvasW * 0.052);
+  const iconSpacing = Math.round(canvasW * 0.058);
+  ctx.font = `${iconSize}px Arial`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let i = 0; i < maxLives; i++) {
+    ctx.save();
+    ctx.globalAlpha = i < p.lives ? 1 : 0.2;
+    ctx.fillText('🐱', 10 + iconSpacing * i + iconSize / 2, 22);
+    ctx.restore();
+  }
+
+  // Power-up bar
+  let powerLabel = '', powerColor = '', powerFrac = 0;
+  if (p.invincible) { powerLabel = "BAILEY'S 🥛"; powerColor = '#d4a017'; powerFrac = p.invincibleTimer / 180; }
+  else if (p.speedBoost) { powerLabel = 'RAMEN SPEED 🍜'; powerColor = '#ff6b35'; powerFrac = p.speedTimer / 180; }
+  else if (p.multiplier > 1) { powerLabel = '2x MAC 🧀'; powerColor = '#ffcc00'; powerFrac = p.multiplierTimer / 300; }
+  if (powerLabel) {
+    const bx = canvasW - 140, by = 44, bw = 128, bh = 10;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = powerColor; ctx.fillRect(bx, by, bw * powerFrac, bh);
+    ctx.font = '11px Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText(powerLabel, bx + bw / 2, by + bh + 12);
+  }
+
+  // Progress bar
+  const barW = canvasW * 0.4, barX = (canvasW - barW) / 2;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(barX, 8, barW, 6);
+  ctx.fillStyle = '#fff'; ctx.fillRect(barX, 8, barW * Math.min(1, STATE.distance / CONFIG.totalDistance), 6);
+  ctx.font = '14px Arial'; ctx.textAlign = 'center';
+  ctx.fillText('✈️', barX + barW * Math.min(1, STATE.distance / CONFIG.totalDistance), 22);
+}
+
+// ─── SCREEN: INSTRUCTIONS ────────────────────────────────────────────────────
+function drawInstructionsScreen() {
+  const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+  g.addColorStop(0, '#1a2a5e'); g.addColorStop(1, '#0d1b3e');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, canvasW, canvasH);
+
+  const cx = canvasW / 2;
+  const p = STATE.instructionPage;
+
+  // font helpers — all relative to canvasH so landscape & portrait scale right
+  const fBig   = `bold ${Math.round(canvasH * 0.10)}px Arial`;
+  const fMed   = `bold ${Math.round(canvasH * 0.075)}px Arial`;
+  const fSub   =       `${Math.round(canvasH * 0.060)}px Arial`;
+  const fSmall =       `${Math.round(canvasH * 0.050)}px Arial`;
+  const fEmoji =       `${Math.round(canvasH * 0.18)}px Arial`;
+
+  // Page dots — just below top
+  for (let i = 0; i <= 6; i++) {
+    ctx.beginPath();
+    ctx.arc(cx - 42 + i * 14, canvasH * 0.07, 4, 0, Math.PI * 2);
+    ctx.fillStyle = i === p ? '#fff' : 'rgba(255,255,255,0.3)';
+    ctx.fill();
+  }
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  if (p === 0) {
+    ctx.font = fMed;   ctx.fillStyle = '#ff3333';
+    ctx.fillText('⚠️ READ THIS', cx, canvasH * 0.22);
+    ctx.fillText('EVEN IF YOU DON\'T FEEL LIKE IT ⚠️', cx, canvasH * 0.34);
+    ctx.font = fBig;   ctx.fillStyle = '#fff';
+    ctx.fillText('👆 TAP ANYWHERE to fly up', cx, canvasH * 0.52);
+    ctx.font = fSub;   ctx.fillStyle = '#87ceeb';
+    ctx.fillText('Like Flappy Bird!', cx, canvasH * 0.66);
+
+  } else if (p === 1) {
+    ctx.font = fMed;  ctx.fillStyle = '#fff';
+    ctx.fillText('Keep tapping to stay up.', cx, canvasH * 0.30);
+    ctx.font = fSub;  ctx.fillStyle = '#ff9a9a';
+    ctx.fillText('Stop tapping = you fall ↓', cx, canvasH * 0.46);
+    ctx.font = fSub;  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText('Fly through the GAP in the windmills!', cx, canvasH * 0.62);
+
+  } else if (p === 2) {
+    ctx.font = fEmoji; ctx.fillText('🦑', cx, canvasH * 0.30);
+    ctx.font = fMed;  ctx.fillStyle = '#5dffb0';
+    ctx.fillText("Dodge Old Gregg's tentacles", cx, canvasH * 0.52);
+    ctx.font = fSub;  ctx.fillStyle = '#ffd700';
+    ctx.fillText('in the Atlantic (zone 2 — the dark spooky part)', cx, canvasH * 0.67);
+
+  } else if (p === 3) {
+    ctx.font = fEmoji;
+    ctx.fillText('🍜', cx - canvasW * 0.10, canvasH * 0.30);
+    ctx.fillText('🥛', cx + canvasW * 0.10, canvasH * 0.30);
+    ctx.font = fMed;  ctx.fillStyle = '#ff6b35';
+    ctx.fillText('Ramen = speed boost', cx, canvasH * 0.52);
+    ctx.font = fSub;  ctx.fillStyle = '#d4a017';
+    ctx.fillText("Bailey's = invincible!  Grab both!", cx, canvasH * 0.67);
+
+  } else if (p === 4) {
+    ctx.font = fEmoji; ctx.fillText('🐱', cx, canvasH * 0.30);
+    ctx.font = fMed;  ctx.fillStyle = '#ffaacc';
+    ctx.fillText('Bunny Buns = extra life!', cx, canvasH * 0.52);
+    ctx.font = fSub;  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText('Collect her whenever she appears 🐱', cx, canvasH * 0.67);
+
+  } else if (p === 5) {
+    ctx.font = fEmoji;
+    ctx.fillText('🐱', cx - canvasW * 0.08, canvasH * 0.28);
+    ctx.fillText('🤖', cx + canvasW * 0.08, canvasH * 0.28);
+    ctx.font = fMed;  ctx.fillStyle = '#ff4444';
+    ctx.fillText("AVOID DAD'S AI! 🤖", cx, canvasH * 0.52);
+    ctx.font = fSub;  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('It\'s labeled "DAD\'S AI" — Bunny says don\'t touch it', cx, canvasH * 0.67);
+
+  } else if (p === 6) {
+    ctx.font = fEmoji; ctx.fillText('🌭', cx, canvasH * 0.30);
+    ctx.font = fMed;  ctx.fillStyle = '#ff8c00';
+    ctx.fillText('Touch the hot dog guy!', cx, canvasH * 0.52);
+    ctx.font = fSub;  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('(from I Think You Should Leave) = bonus points', cx, canvasH * 0.67);
+  }
+
+  ctx.textBaseline = 'alphabetic';
+
+  // Bottom prompt
+  const pulse = 0.75 + Math.sin(STATE.frame * 0.07) * 0.25;
+  ctx.save(); ctx.globalAlpha = pulse; ctx.textAlign = 'center';
+  if (p < 6) {
+    ctx.font = fSub; ctx.fillStyle = '#fff';
+    ctx.fillText('Tap for next →', cx, canvasH * 0.82);
+  } else {
+    ctx.font = fMed; ctx.fillStyle = '#6bcb77';
+    ctx.fillText('TAP TO BEGIN ✈️', cx, canvasH * 0.82);
+  }
+  ctx.restore();
+
+  // Skip link — single line
+  if (p < 6) {
+    ctx.save(); ctx.globalAlpha = 0.75; ctx.textAlign = 'center';
+    ctx.font = fSmall; ctx.fillStyle = '#aac8ff';
+    ctx.fillText('Skip — I already know how to play. Tap here to begin.', cx, canvasH * 0.93);
+    ctx.restore();
+  }
+}
+
+// ─── SCREEN: START ────────────────────────────────────────────────────────────
+function drawStartScreen() {
+  const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+  g.addColorStop(0, '#1a2a5e'); g.addColorStop(1, '#0d1b3e');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // Stars
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  for (let i = 0; i < 60; i++) {
+    ctx.beginPath();
+    ctx.arc((i * 137.5) % canvasW, (i * 97.3) % (canvasH * 0.7), 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Animated plane
+  const bobY = canvasH * 0.38 + Math.sin(STATE.frame * 0.04) * 8;
+  STATE.player.y = bobY;
+  drawPlane();
+
+  ctx.save(); ctx.textAlign = 'center';
+  ctx.font = 'bold 32px Arial'; ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#4a8fdd'; ctx.shadowBlur = 20;
+  ctx.fillText("✈️ EIRENE'S GREAT ESCAPE", canvasW / 2, canvasH * 0.22);
+  ctx.font = '18px Arial'; ctx.fillStyle = '#87ceeb'; ctx.shadowBlur = 0;
+  ctx.fillText('Amsterdam → Home', canvasW / 2, canvasH * 0.30); ctx.restore();
+
+  ctx.save(); ctx.textAlign = 'center'; ctx.font = '14px Arial';
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillText('Hi Eirene! Dad built this at 5am using AI.', canvasW / 2, canvasH * 0.56);
+  ctx.fillText('Yes, he knows. Get home safe. — Dad 🤖', canvasW / 2, canvasH * 0.62); ctx.restore();
+
+  const pulse = 0.85 + Math.sin(STATE.frame * 0.06) * 0.15;
+  ctx.save(); ctx.globalAlpha = pulse; ctx.textAlign = 'center';
+  const btnW = 200, btnH = 50, btnX = canvasW / 2 - btnW / 2, btnY = canvasH * 0.72;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(btnX, btnY, btnW, btnH, 12);
+  else ctx.rect(btnX, btnY, btnW, btnH);
+  ctx.fillStyle = 'rgba(74,143,221,0.3)'; ctx.fill();
+  ctx.strokeStyle = '#4a8fdd'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#fff';
+  ctx.fillText('TAP TO START ✈️', canvasW / 2, btnY + 32); ctx.restore();
+}
+
+// ─── PARTICLES (CONFETTI) ─────────────────────────────────────────────────────
+function spawnConfetti() {
+  const colors = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff6fc8','#fff'];
+  for (let i = 0; i < 90; i++) {
+    STATE.particles.push({
+      x: canvasW * Math.random(), y: canvasH * 0.3 * Math.random(),
+      vx: (Math.random() - 0.5) * 5, vy: Math.random() * 2 + 1,
+      w: 6 + Math.random() * 8, h: 4 + Math.random() * 6,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rot: Math.random() * Math.PI * 2, rotV: (Math.random() - 0.5) * 0.15, alpha: 1,
+    });
+  }
+}
+function updateParticles() {
+  STATE.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.rot += p.rotV; if (p.y > canvasH * 0.9) p.alpha -= 0.02; });
+  STATE.particles = STATE.particles.filter(p => p.alpha > 0);
+}
+function drawParticles() {
+  STATE.particles.forEach(p => {
+    ctx.save(); ctx.globalAlpha = p.alpha; ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    ctx.fillStyle = p.color; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+  });
+}
+
+// ─── SCREEN: DEATH ────────────────────────────────────────────────────────────
+function wrapText(context, text, x, y, maxWidth, lineH) {
+  const words = text.split(' '); let line = '', currentY = y;
+  for (const word of words) {
+    const test = line ? line + ' ' + word : word;
+    if (context.measureText(test).width > maxWidth && line) {
+      context.fillText(line, x, currentY); line = word; currentY += lineH;
+    } else { line = test; }
+  }
+  context.fillText(line, x, currentY);
+}
+
+function drawDeadScreen() {
+  ctx.fillStyle = 'rgba(180,20,20,0.88)'; ctx.fillRect(0, 0, canvasW, canvasH);
+  ctx.save(); ctx.textAlign = 'center';
+  ctx.font = '72px Arial'; ctx.fillText('🦑', canvasW / 2, canvasH * 0.18);
+  ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#000'; ctx.shadowBlur = 10;
+  wrapText(ctx, DEATH_QUOTES[STATE.deathQuoteIdx], canvasW / 2, canvasH * 0.34, canvasW * 0.8, 34);
+  ctx.font = '20px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.shadowBlur = 0;
+  ctx.fillText(`Score: ${STATE.score}`, canvasW / 2, canvasH * 0.58);
+  const bw = 180, bh = 50, bx = canvasW / 2 - bw / 2, by = canvasH * 0.68;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 12); else ctx.rect(bx, by, bw, bh);
+  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#fff';
+  ctx.fillText('TRY AGAIN ✈️', canvasW / 2, by + 32); ctx.restore();
+}
+
+// ─── SCREEN: WIN ──────────────────────────────────────────────────────────────
+function drawWinScreen() {
+  const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+  g.addColorStop(0, '#ff9a3c'); g.addColorStop(1, '#c8e6c9');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, canvasW, canvasH);
+  drawParticles();
+  ctx.save(); ctx.textAlign = 'center';
+  ctx.font = '64px Arial'; ctx.fillText('🐱', canvasW / 2, canvasH * 0.16);
+  ctx.font = 'bold 28px Arial'; ctx.fillStyle = '#1a3a1a';
+  ctx.shadowColor = 'rgba(255,255,255,0.8)'; ctx.shadowBlur = 12;
+  ctx.fillText('EIRENE IS HOME.', canvasW / 2, canvasH * 0.34);
+  ctx.font = 'bold 22px Arial';
+  ctx.fillText('Bunny has been waiting. 🐱', canvasW / 2, canvasH * 0.44);
+  ctx.font = '18px Arial'; ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 0;
+  ctx.fillText(`Final Score: ${STATE.score}`, canvasW / 2, canvasH * 0.56);
+  ctx.font = '13px Arial'; ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillText('Made by Dad at 5am with AI ☕🤖', canvasW / 2, canvasH * 0.63);
+  const bw = 200, bh = 50, bx = canvasW / 2 - bw / 2, by = canvasH * 0.72;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 12); else ctx.rect(bx, by, bw, bh);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
+  ctx.strokeStyle = '#1a3a1a'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#1a3a1a';
+  ctx.fillText('PLAY AGAIN ✈️', canvasW / 2, by + 32); ctx.restore();
+}
+
+// ─── RANDOM EVENTS ────────────────────────────────────────────────────────────
+function spawnHotDogGuy() {
+  STATE.hotDogGuy = { x: canvasW + 30, y: canvasH - CONFIG.groundH - 30, speed: STATE.scrollSpeed * 2.5 };
+}
+
+function updateHotDogGuy() {
+  if (!STATE.hotDogGuy) return;
+  STATE.hotDogGuy.x -= STATE.hotDogGuy.speed;
+  if (STATE.hotDogGuy.x < -60) { STATE.hotDogGuy = null; return; }
+  if (Math.hypot(CONFIG.playerX - STATE.hotDogGuy.x, STATE.player.y - STATE.hotDogGuy.y) < 35) {
+    STATE.score += 200;
+    showFloatingText(STATE.hotDogGuy.x, STATE.hotDogGuy.y - 20, '+200 🌭 HOT DOG!', '#ff8c00');
+    STATE.hotDogGuy = null;
+  }
+}
+
+function drawHotDogGuy() {
+  if (!STATE.hotDogGuy) return;
+  ctx.save();
+  ctx.font = '36px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('🌭', STATE.hotDogGuy.x, STATE.hotDogGuy.y);
+  ctx.font = '28px Arial'; ctx.textBaseline = 'bottom';
+  ctx.fillText('🏃', STATE.hotDogGuy.x, STATE.hotDogGuy.y - 30);
+  ctx.restore();
+}
+
+function updateRandomEvents() {
+  // Old Gregg warning (Atlantic only)
+  if (STATE.zone === 1 && STATE.oldGreggWarningTimer <= 0 && Math.random() < 0.003) {
+    STATE.oldGreggWarningTimer = 90;
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        if (STATE.screen === 'game') STATE.obstacles.push({ type: 'tentacle', x: canvasW + 10 + i * 200, gapCenter: canvasH * 0.4, w: CONFIG.obstacleW, collisionTopY: 0, collisionH: 0 });
+      }, i * 600);
+    }
+  }
+  if (STATE.oldGreggWarningTimer > 0) STATE.oldGreggWarningTimer--;
+
+  // IASYL flash
+  STATE.nextIasyl--;
+  if (STATE.nextIasyl <= 0) { STATE.iasylTimer = 80; STATE.nextIasyl = 1200 + Math.random() * 1200; }
+  if (STATE.iasylTimer > 0) STATE.iasylTimer--;
+
+  // AI robot
+  STATE.nextAiRobot--;
+  if (STATE.nextAiRobot <= 0) { spawnAiRobot(); STATE.nextAiRobot = 700 + Math.random() * 800; }
+
+  // Hot dog guy
+  STATE.nextHotDog--;
+  if (STATE.nextHotDog <= 0 && !STATE.hotDogGuy) { spawnHotDogGuy(); STATE.nextHotDog = 1800 + Math.random() * 1200; }
+
+  updateHotDogGuy();
+}
+
+function drawLevelUpFlash() {
+  if (!STATE.levelUpFlash || STATE.levelUpFlash.alpha <= 0) return;
+  const a = STATE.levelUpFlash.alpha;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, a * 2);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const fontSize = Math.round(canvasW * 0.065);
+  ctx.font = `bold ${fontSize}px Arial`;
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.lineWidth = 5;
+  ctx.strokeText(STATE.levelUpFlash.text, canvasW / 2, canvasH * 0.38);
+  ctx.fillStyle = '#ffe94d';
+  ctx.fillText(STATE.levelUpFlash.text, canvasW / 2, canvasH * 0.38);
+  ctx.restore();
+}
+
+function drawRandomEventOverlays() {
+  // Old Gregg warning
+  if (STATE.oldGreggWarningTimer > 60) {
+    const alpha = Math.min(1, (STATE.oldGreggWarningTimer - 60) / 30) * 0.85;
+    ctx.save(); ctx.fillStyle = `rgba(0,200,80,${alpha})`; ctx.fillRect(0, 0, canvasW, canvasH);
+    ctx.font = 'bold 38px Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText("I'M OLD GREGG!", canvasW / 2, canvasH / 2);
+    ctx.font = '22px Arial'; ctx.fillText('🦑🦑🦑', canvasW / 2, canvasH / 2 + 48); ctx.restore();
+  }
+  // IASYL flash
+  if (STATE.iasylTimer > 0) {
+    const alpha = Math.min(1, STATE.iasylTimer / 30) * 0.75;
+    ctx.save(); ctx.fillStyle = `rgba(220,20,20,${alpha})`; ctx.fillRect(0, 0, canvasW, canvasH);
+    ctx.font = 'bold 32px Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText('STOP TALKING.', canvasW / 2, canvasH / 2 - 20);
+    ctx.fillText('STOP TALKING.', canvasW / 2, canvasH / 2 + 28); ctx.restore();
+  }
+  drawHotDogGuy();
+}
+
+// ─── GAME LOOP ────────────────────────────────────────────────────────────────
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function update() {
+  STATE.frame++;
+  if (STATE.screen === 'start') return;
+  if (STATE.screen === 'instructions') return;
+  if (STATE.screen === 'win') { updateParticles(); return; }
+  if (STATE.screen === 'dead') return;
+
+  const p = STATE.player;
+  p.y += p.vy;
+
+  if (p.invincible) { p.invincibleTimer--; if (p.invincibleTimer <= 0) p.invincible = false; }
+  if (p.speedBoost) { p.speedTimer--; if (p.speedTimer <= 0) { p.speedBoost = false; } }
+  if (p.multiplier > 1) { p.multiplierTimer--; if (p.multiplierTimer <= 0) p.multiplier = 1; }
+
+  if (p.y - p.h / 2 < 0 || p.y + p.h / 2 > canvasH - CONFIG.groundH) { loseLife(); return; }
+
+  STATE.gameFrames++;
+
+  const lvl = getDifficulty();
+
+  // Flash when level increases
+  if (lvl > STATE.currentLevel) {
+    STATE.currentLevel = lvl;
+    const msgs = ['', '', 'Level 2 — A little harder now!', 'Level 3 — Things are picking up!', 'Level 4 — Getting real now!', 'Level 5 — Full difficulty unlocked!'];
+    STATE.levelUpFlash = { text: msgs[lvl], alpha: 1.0 };
+  }
+  if (STATE.levelUpFlash.alpha > 0) STATE.levelUpFlash.alpha -= 0.005;
+
+  const gravityByLevel = [0.07, 0.045, 0.058, 0.075, 0.10, 0.14];
+  p.vy += gravityByLevel[lvl] * (canvasH / 800);
+
+  const speedByLevel   = [0.5, 1.1, 1.3, 1.6, 2.0, 2.6];
+  STATE.scrollSpeed = speedByLevel[lvl];
+  if (p.speedBoost) STATE.scrollSpeed *= 1.6;
+  STATE.distance += STATE.scrollSpeed;
+
+  const newZone = Math.min(2, Math.floor(STATE.distance / CONFIG.zoneLength));
+  if (newZone !== STATE.zone) {
+    STATE.zone = newZone;
+    const labels = ['', 'THE ATLANTIC — watch out.', '🏠 Almost home...'];
+    STATE.zoneLabel = { text: labels[newZone], alpha: 1.0 };
+  }
+  if (STATE.zoneLabel.alpha > 0) STATE.zoneLabel.alpha -= 0.008;
+
+  STATE.score += Math.floor(STATE.player.multiplier);
+
+  if (STATE.distance >= CONFIG.totalDistance) { STATE.screen = 'win'; spawnConfetti(); return; }
+
+  updateObstacles();
+  updateCollectibles();
+  updateFloatingTexts();
+  checkCollisions();
+  updateRandomEvents();
+}
+
+function drawRotatePrompt() {
+  if (!isMobile() || !isPortrait()) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(10,10,30,0.93)';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `${Math.round(canvasW * 0.22)}px Arial`;
+  ctx.fillText('↻', canvasW / 2, canvasH * 0.35);
+  ctx.font = `bold ${Math.round(canvasW * 0.072)}px Arial`;
+  ctx.fillStyle = '#fff';
+  ctx.fillText('Turn your phone sideways!', canvasW / 2, canvasH * 0.58);
+  ctx.font = `${Math.round(canvasW * 0.052)}px Arial`;
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.fillText('Landscape mode plays way better', canvasW / 2, canvasH * 0.70);
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  if (STATE.screen === 'start') { drawStartScreen(); }
+  else if (STATE.screen === 'instructions') { drawInstructionsScreen(); }
+  else if (STATE.screen === 'dead') { drawDeadScreen(); }
+  else if (STATE.screen === 'win') { drawWinScreen(); }
+  else {
+    drawBackground();
+    drawGround();
+    drawObstacles();
+    drawCollectibles();
+    drawCollectibleArrows();
+    drawFloatingTexts();
+    drawPlane();
+    drawZoneLabel();
+    drawHUD();
+    drawLevelUpFlash();
+    drawRandomEventOverlays();
+  }
+  drawRotatePrompt();
+}
+
+loop();
+</script>
+</body>
+</html>

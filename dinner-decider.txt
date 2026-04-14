@@ -1,0 +1,20 @@
+Build a simple, fun "What's for Dinner?" decision app for a family. Single HTML file, no backend, mobile-friendly.
+
+RULES OF THE GAME:
+1. App shows a random restaurant/cuisine suggestion from a preset list
+2. Each family member gets exactly 3 "VETO" tokens per round
+3. When someone vetoes, they lose a token and a new suggestion appears
+4. If you veto, you CANNOT veto the next suggestion (skip a turn)
+5. When all tokens are spent OR someone hits "LET'S EAT THIS", game ends
+6. Winner announcement: "[Cuisine/Restaurant] WINS! No more complaining allowed."
+
+FEATURES:
+- Fun animations when vetoing (maybe a buzzer sound or shake)
+- Celebration animation when decided
+- "Reset Game" button
+- Editable restaurant/cuisine list (stored in localStorage)
+- Keep it playful - this is for a dad and his daughter
+
+VIBE: Colorful, game-show energy, maybe some confetti when decided. Think "Family Feud meets Tinder for food."
+
+NO: User accounts, databases, complex state management, over-engineering. 
