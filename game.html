@@ -704,9 +704,11 @@ function drawInstructionsScreen() {
   } else if (p === 6) {
     ctx.font = '80px Arial'; ctx.fillText('🌭', cx, canvasH * 0.32);
     ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#ff8c00';
-    ctx.fillText('Touch the hot dog guy', cx, canvasH * 0.52);
+    ctx.fillText('Touch the hot dog guy', cx, canvasH * 0.50);
+    ctx.font = '18px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('(from I Think You Should Leave)', cx, canvasH * 0.60);
     ctx.font = '22px Arial'; ctx.fillStyle = '#fff';
-    ctx.fillText('for bonus points!', cx, canvasH * 0.63);
+    ctx.fillText('for bonus points!', cx, canvasH * 0.70);
   }
 
   // Bottom prompt
