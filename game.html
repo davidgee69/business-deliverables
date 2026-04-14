@@ -15,16 +15,16 @@
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const CONFIG = {
-  gravity: 0.11,
-  flapForce: -5.2,
-  baseScrollSpeed: 0.9,
+  gravity: 0.07,
+  flapForce: -4.2,
+  baseScrollSpeed: 0.5,
   totalDistance: 9000,
   zoneLength: 3000,
   groundH: 55,
   playerX: null,
-  obstacleGap: 500,      // starts enormous, shrinks with distance
+  obstacleGap: 600,      // starts enormous, shrinks with distance
   obstacleW: 58,
-  minObstacleSpacing: 700,
+  minObstacleSpacing: 900,
   collectibleSize: 28,
 };
 
@@ -398,8 +398,8 @@ function spawnAiRobot() {
 }
 
 function updateObstacles() {
-  // No obstacles for first 1800px — long free warmup
-  if (STATE.distance < 1800) return;
+  // No obstacles for first 3500px — ~2 full minutes of free flying at start speed
+  if (STATE.distance < 3500) return;
 
   const lastX = STATE.obstacles.filter(o => o.type !== 'ai_robot').length
     ? STATE.obstacles.filter(o => o.type !== 'ai_robot').slice(-1)[0].x
@@ -724,11 +724,11 @@ function drawInstructionsScreen() {
   // Skip link (bottom strip — tap here to skip)
   if (p < 6) {
     ctx.save();
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = 0.85;
     ctx.textAlign = 'center';
-    ctx.font = '13px Arial';
+    ctx.font = 'bold 17px Arial';
     ctx.fillStyle = '#aac8ff';
-    ctx.fillText('Skip instructions — I already know how to play  →  tap here to begin', cx, canvasH * 0.94);
+    ctx.fillText('Skip — I already know how to play. Tap here to begin.', cx, canvasH * 0.94);
     ctx.restore();
   }
 }
