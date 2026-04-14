@@ -47,6 +47,7 @@ const STATE = {
   aiRobotTimer: 0, nextAiRobot: 600,
   nextHotDog: 2400,
   instructionPage: 0,
+  gameFrames: 0,
 };
 
 const DEATH_QUOTES = [
@@ -312,6 +313,7 @@ function resetGame() {
   STATE.nextAiRobot = 600;
   STATE.nextHotDog = 2400;
   STATE.instructionPage = 0;
+  STATE.gameFrames = 0;
 }
 
 function startGame() {
@@ -355,10 +357,17 @@ canvas.addEventListener('click', (e) => handleTap(e.clientX, e.clientY));
 canvas.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.touches[0]; handleTap(t.clientX, t.clientY); }, { passive: false });
 
 // ─── OBSTACLES ────────────────────────────────────────────────────────────────
+function getDifficulty() {
+  const f = STATE.gameFrames;
+  if (f < 3600)  return 1;
+  if (f < 7200)  return 2;
+  if (f < 10800) return 3;
+  if (f < 14400) return 4;
+  return 5;
+}
+
 function getDynamicGap() {
-  // Starts at 340 (huge), shrinks to 150 by end
-  const progress = Math.min(1, STATE.distance / CONFIG.totalDistance);
-  return CONFIG.obstacleGap - progress * 190;
+  return [600, 600, 560, 450, 330, 240][getDifficulty()];
 }
 
 function spawnObstacle() {
@@ -398,13 +407,16 @@ function spawnAiRobot() {
 }
 
 function updateObstacles() {
-  // No obstacles for first 3500px — ~2 full minutes of free flying at start speed
-  if (STATE.distance < 3500) return;
+  const lvl = getDifficulty();
+  if (lvl === 1) return; // no obstacles first full minute
+
+  const spacingByLevel = [900, 900, 860, 740, 580, 460];
+  const spacing = spacingByLevel[lvl];
 
   const lastX = STATE.obstacles.filter(o => o.type !== 'ai_robot').length
     ? STATE.obstacles.filter(o => o.type !== 'ai_robot').slice(-1)[0].x
     : -999;
-  if (canvasW - lastX > CONFIG.minObstacleSpacing) spawnObstacle();
+  if (canvasW - lastX > spacing) spawnObstacle();
 
   STATE.obstacles.forEach(o => {
     if (o.type === 'ai_robot') { o.x -= o.speed; o.cx = o.x; }
@@ -497,9 +509,8 @@ function spawnCollectible() {
 }
 
 function updateCollectibles() {
-  // Early game: prizes every ~200px. Late game: every ~700px.
-  const earlyBonus = Math.max(0, 1 - STATE.distance / 3000);
-  const spacing = 180 + earlyBonus * -20 + (1 - earlyBonus) * 520 + Math.random() * 150;
+  const collectibleSpacing = [160, 160, 220, 340, 480, 620];
+  const spacing = collectibleSpacing[getDifficulty()] + Math.random() * 80;
   const lastX = STATE.collectibles.length ? STATE.collectibles[STATE.collectibles.length - 1].x : -999;
   if (canvasW - lastX > spacing || STATE.collectibles.length === 0) spawnCollectible();
   STATE.collectibles.forEach(c => { c.x -= STATE.scrollSpeed; if (c.collected) c.alpha -= 0.08; });
@@ -514,6 +525,29 @@ function drawCollectibles() {
     ctx.fillStyle = c.color + '44'; ctx.fill();
     ctx.font = `${s}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(c.emoji, c.x, c.y); ctx.restore();
+  });
+}
+
+function drawCollectibleArrows() {
+  const px = CONFIG.playerX;
+  const py = STATE.player.y;
+  STATE.collectibles.forEach(c => {
+    if (c.collected) return;
+    const dx = c.x - px;
+    if (dx < 20 || dx > 380) return; // only show for upcoming, nearby items
+    const dy = c.y - py;
+    if (Math.abs(dy) < 30) return; // already lined up, no arrow needed
+    const arrowX = px + 60;
+    const arrowY = py + Math.sign(dy) * 28;
+    const pulse = 0.5 + Math.sin(STATE.frame * 0.12) * 0.3;
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.font = 'bold 18px Arial';
+    ctx.fillStyle = c.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(dy > 0 ? '▼' : '▲', arrowX, arrowY);
+    ctx.restore();
   });
 }
 
@@ -951,12 +985,14 @@ function update() {
   p.y += p.vy;
 
   if (p.invincible) { p.invincibleTimer--; if (p.invincibleTimer <= 0) p.invincible = false; }
-  if (p.speedBoost) { p.speedTimer--; if (p.speedTimer <= 0) { p.speedBoost = false; STATE.scrollSpeed = CONFIG.baseScrollSpeed + STATE.distance * 0.0003; } }
+  if (p.speedBoost) { p.speedTimer--; if (p.speedTimer <= 0) { p.speedBoost = false; } }
   if (p.multiplier > 1) { p.multiplierTimer--; if (p.multiplierTimer <= 0) p.multiplier = 1; }
 
   if (p.y - p.h / 2 < 0 || p.y + p.h / 2 > canvasH - CONFIG.groundH) { loseLife(); return; }
 
-  STATE.scrollSpeed = CONFIG.baseScrollSpeed + STATE.distance * 0.0003;
+  STATE.gameFrames++;
+  const speedByLevel = [0.5, 0.5, 0.62, 0.85, 1.2, 1.7];
+  STATE.scrollSpeed = speedByLevel[getDifficulty()];
   if (p.speedBoost) STATE.scrollSpeed *= 1.6;
   STATE.distance += STATE.scrollSpeed;
 
@@ -990,6 +1026,7 @@ function draw() {
   drawGround();
   drawObstacles();
   drawCollectibles();
+  drawCollectibleArrows();
   drawFloatingTexts();
   drawPlane();
   drawZoneLabel();
