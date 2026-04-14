@@ -241,51 +241,48 @@ window.addEventListener('resize', resize);
 resize();
 
 // ─── DRAW: PLANE ──────────────────────────────────────────────────────────────
+function planeScale() {
+  return Math.max(0.5, Math.min(1.4, canvasW / 1000));
+}
+
 function drawPlane() {
   const p = STATE.player;
   const x = CONFIG.playerX;
   const y = p.y + (p.wobble > 0 ? Math.sin(p.wobble * 0.8) * 6 : 0);
   if (p.wobble > 0) p.wobble--;
+  const s = planeScale();
 
   ctx.save();
-  if (p.invincible && Math.floor(STATE.frame / 6) % 2 === 0) {
-    ctx.globalAlpha = 0.4;
-  }
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  if (p.invincible && Math.floor(STATE.frame / 6) % 2 === 0) ctx.globalAlpha = 0.4;
 
   // Body
   ctx.fillStyle = '#f0f0f0';
   ctx.beginPath();
-  ctx.ellipse(x, y, 26, 11, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, 26, 11, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Wing (top)
   ctx.fillStyle = '#4a8fdd';
   ctx.beginPath();
-  ctx.moveTo(x - 4, y - 2);
-  ctx.lineTo(x + 12, y - 22);
-  ctx.lineTo(x + 18, y - 2);
-  ctx.closePath();
-  ctx.fill();
+  ctx.moveTo(-4, -2); ctx.lineTo(12, -22); ctx.lineTo(18, -2);
+  ctx.closePath(); ctx.fill();
 
   // Tail fin
-  ctx.fillStyle = '#4a8fdd';
   ctx.beginPath();
-  ctx.moveTo(x - 22, y - 1);
-  ctx.lineTo(x - 12, y - 14);
-  ctx.lineTo(x - 10, y - 1);
-  ctx.closePath();
-  ctx.fill();
+  ctx.moveTo(-22, -1); ctx.lineTo(-12, -14); ctx.lineTo(-10, -1);
+  ctx.closePath(); ctx.fill();
 
   // Window
   ctx.fillStyle = '#b8e0f7';
-  ctx.beginPath();
-  ctx.arc(x + 8, y - 1, 5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#aaa';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.beginPath(); ctx.arc(8, -1, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1; ctx.stroke();
 
   ctx.restore();
+
+  // keep collision box in sync with visual size
+  p.w = 52 * s; p.h = 28 * s;
 }
 
 // ─── INPUT ────────────────────────────────────────────────────────────────────
@@ -331,7 +328,8 @@ function startGame() {
 
 function flap() {
   if (STATE.screen === 'game') {
-    STATE.player.vy = CONFIG.flapForce * (canvasH / 800);
+    const mobileMult = isMobile() ? 0.65 : 1.0;
+    STATE.player.vy = CONFIG.flapForce * (canvasH / 800) * mobileMult;
   } else if (STATE.screen === 'start') {
     STATE.screen = 'instructions';
   } else if (STATE.screen === 'instructions') {
