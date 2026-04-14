@@ -68,9 +68,10 @@ function loseLife() {
     STATE.screen = 'dead';
     STATE.deathQuoteIdx = Math.floor(Math.random() * DEATH_QUOTES.length);
   } else {
+    STATE.player.y = canvasH * 0.45;
+    STATE.player.vy = -1.5 * (canvasH / 800);
     STATE.player.invincible = true;
-    STATE.player.invincibleTimer = 120;
-    STATE.player.vy = 0;
+    STATE.player.invincibleTimer = 150;
   }
 }
 
@@ -327,7 +328,7 @@ function startGame() {
 
 function flap() {
   if (STATE.screen === 'game') {
-    STATE.player.vy = CONFIG.flapForce;
+    STATE.player.vy = CONFIG.flapForce * (canvasH / 800);
   } else if (STATE.screen === 'start') {
     STATE.screen = 'instructions';
   } else if (STATE.screen === 'instructions') {
@@ -636,13 +637,18 @@ function drawHUD() {
   ctx.strokeText(`${STATE.score}`, canvasW - 16, 34);
   ctx.fillText(`${STATE.score}`, canvasW - 16, 34); ctx.restore();
 
-  // Lives (Bunny icon + count)
-  ctx.save(); ctx.font = '22px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText('🐱', 8, 20); ctx.restore();
-  ctx.save(); ctx.font = 'bold 18px Arial'; ctx.fillStyle = '#fff';
-  ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3;
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.strokeText(`x${p.lives}`, 36, 20); ctx.fillText(`x${p.lives}`, 36, 20); ctx.restore();
+  // Lives (9 Bunny icons)
+  const maxLives = 9;
+  const iconSize = Math.round(canvasW * 0.052);
+  const iconSpacing = Math.round(canvasW * 0.058);
+  ctx.font = `${iconSize}px Arial`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let i = 0; i < maxLives; i++) {
+    ctx.save();
+    ctx.globalAlpha = i < p.lives ? 1 : 0.2;
+    ctx.fillText('🐱', 10 + iconSpacing * i + iconSize / 2, 22);
+    ctx.restore();
+  }
 
   // Power-up bar
   let powerLabel = '', powerColor = '', powerFrac = 0;
@@ -1026,7 +1032,7 @@ function update() {
   if (STATE.levelUpFlash.alpha > 0) STATE.levelUpFlash.alpha -= 0.005;
 
   const gravityByLevel = [0.07, 0.045, 0.058, 0.075, 0.10, 0.14];
-  p.vy += gravityByLevel[lvl];
+  p.vy += gravityByLevel[lvl] * (canvasH / 800);
 
   const speedByLevel   = [0.5, 1.1, 1.3, 1.6, 2.0, 2.6];
   STATE.scrollSpeed = speedByLevel[lvl];
