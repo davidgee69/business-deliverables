@@ -15,14 +15,14 @@
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const CONFIG = {
-  gravity: 0.20,
-  flapForce: -6.2,
+  gravity: 0.13,
+  flapForce: -5.6,
   baseScrollSpeed: 1.2,
   totalDistance: 9000,
   zoneLength: 3000,
   groundH: 55,
   playerX: null,
-  obstacleGap: 340,      // starts huge, shrinks with distance
+  obstacleGap: 420,      // starts huge, shrinks with distance
   obstacleW: 58,
   minObstacleSpacing: 620,
   collectibleSize: 28,
@@ -475,7 +475,9 @@ function spawnCollectible() {
 }
 
 function updateCollectibles() {
-  const spacing = 500 + Math.random() * 300;
+  // Early game: prizes every ~200px. Late game: every ~700px.
+  const earlyBonus = Math.max(0, 1 - STATE.distance / 3000);
+  const spacing = 180 + earlyBonus * -20 + (1 - earlyBonus) * 520 + Math.random() * 150;
   const lastX = STATE.collectibles.length ? STATE.collectibles[STATE.collectibles.length - 1].x : -999;
   if (canvasW - lastX > spacing || STATE.collectibles.length === 0) spawnCollectible();
   STATE.collectibles.forEach(c => { c.x -= STATE.scrollSpeed; if (c.collected) c.alpha -= 0.08; });
@@ -612,7 +614,10 @@ function drawInstructionsScreen() {
 
   ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#fff';
   ctx.shadowColor = '#4a8fdd'; ctx.shadowBlur = 15;
-  ctx.fillText('HOW TO PLAY', canvasW / 2, canvasH * 0.12);
+  ctx.fillText('HOW TO PLAY', canvasW / 2, canvasH * 0.10);
+  ctx.shadowBlur = 0;
+  ctx.font = '16px Arial'; ctx.fillStyle = '#ffd700';
+  ctx.fillText('⚠️ Starts easy — gets harder the closer you get to home!', canvasW / 2, canvasH * 0.18);
   ctx.shadowBlur = 0;
 
   const instructions = [
