@@ -682,112 +682,99 @@ function drawInstructionsScreen() {
   const cx = canvasW / 2;
   const p = STATE.instructionPage;
 
-  // Page dots
+  // font helpers — all relative to canvasH so landscape & portrait scale right
+  const fBig   = `bold ${Math.round(canvasH * 0.10)}px Arial`;
+  const fMed   = `bold ${Math.round(canvasH * 0.075)}px Arial`;
+  const fSub   =       `${Math.round(canvasH * 0.060)}px Arial`;
+  const fSmall =       `${Math.round(canvasH * 0.050)}px Arial`;
+  const fEmoji =       `${Math.round(canvasH * 0.18)}px Arial`;
+
+  // Page dots — just below top
   for (let i = 0; i <= 6; i++) {
     ctx.beginPath();
-    ctx.arc(cx - 42 + i * 14, canvasH * 0.06, 4, 0, Math.PI * 2);
+    ctx.arc(cx - 42 + i * 14, canvasH * 0.07, 4, 0, Math.PI * 2);
     ctx.fillStyle = i === p ? '#fff' : 'rgba(255,255,255,0.3)';
     ctx.fill();
   }
 
-  ctx.textAlign = 'center';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
   if (p === 0) {
-    ctx.font = `bold ${Math.round(canvasW * 0.042)}px Arial`; ctx.fillStyle = '#ff3333';
-    ctx.fillText('⚠️ READ THIS EVEN IF YOU', cx, canvasH * 0.14);
-    ctx.fillText("DON'T FEEL LIKE IT ⚠️", cx, canvasH * 0.20);
-    ctx.font = 'bold 34px Arial'; ctx.fillStyle = '#fff';
-    ctx.fillText('👆 TAP ANYWHERE', cx, canvasH * 0.38);
-    ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#87ceeb';
-    ctx.fillText('to fly up', cx, canvasH * 0.50);
-    ctx.font = '22px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillText('Like Flappy Bird!', cx, canvasH * 0.63);
-    if (isMobile()) {
-      ctx.font = `bold ${Math.round(canvasW * 0.048)}px Arial`;
-      ctx.fillStyle = '#ffe94d';
-      ctx.fillText('📱 Turn your phone sideways', cx, canvasH * 0.77);
-      ctx.font = `${Math.round(canvasW * 0.038)}px Arial`;
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText('for the best experience!', cx, canvasH * 0.85);
-    }
+    ctx.font = fMed;   ctx.fillStyle = '#ff3333';
+    ctx.fillText('⚠️ READ THIS', cx, canvasH * 0.22);
+    ctx.fillText('EVEN IF YOU DON\'T FEEL LIKE IT ⚠️', cx, canvasH * 0.34);
+    ctx.font = fBig;   ctx.fillStyle = '#fff';
+    ctx.fillText('👆 TAP ANYWHERE to fly up', cx, canvasH * 0.52);
+    ctx.font = fSub;   ctx.fillStyle = '#87ceeb';
+    ctx.fillText('Like Flappy Bird!', cx, canvasH * 0.66);
 
   } else if (p === 1) {
-    ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#fff';
-    ctx.fillText('Keep tapping to stay up.', cx, canvasH * 0.32);
-    ctx.font = '22px Arial'; ctx.fillStyle = '#ff9a9a';
-    ctx.fillText('Stop tapping = you fall. ↓', cx, canvasH * 0.44);
-    ctx.font = '20px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillText('Fly through the GAP in the', cx, canvasH * 0.60);
-    ctx.fillText('brown windmills for points!', cx, canvasH * 0.70);
+    ctx.font = fMed;  ctx.fillStyle = '#fff';
+    ctx.fillText('Keep tapping to stay up.', cx, canvasH * 0.30);
+    ctx.font = fSub;  ctx.fillStyle = '#ff9a9a';
+    ctx.fillText('Stop tapping = you fall ↓', cx, canvasH * 0.46);
+    ctx.font = fSub;  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText('Fly through the GAP in the windmills!', cx, canvasH * 0.62);
 
   } else if (p === 2) {
-    ctx.font = '72px Arial'; ctx.fillText('🦑', cx, canvasH * 0.33);
-    ctx.font = 'bold 24px Arial'; ctx.fillStyle = '#5dffb0';
-    ctx.fillText('Dodge Old Gregg\'s tentacles', cx, canvasH * 0.52);
-    ctx.font = '20px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillText('in the Atlantic zone', cx, canvasH * 0.63);
-    ctx.font = '15px Arial'; ctx.fillStyle = '#ffd700';
-    ctx.fillText('(zone 2 — the dark spooky part)', cx, canvasH * 0.73);
+    ctx.font = fEmoji; ctx.fillText('🦑', cx, canvasH * 0.30);
+    ctx.font = fMed;  ctx.fillStyle = '#5dffb0';
+    ctx.fillText("Dodge Old Gregg's tentacles", cx, canvasH * 0.52);
+    ctx.font = fSub;  ctx.fillStyle = '#ffd700';
+    ctx.fillText('in the Atlantic (zone 2 — the dark spooky part)', cx, canvasH * 0.67);
 
   } else if (p === 3) {
-    ctx.font = '60px Arial'; ctx.fillText('🍜', cx - 50, canvasH * 0.32);
-    ctx.font = '60px Arial'; ctx.fillText('🥛', cx + 50, canvasH * 0.32);
-    ctx.font = 'bold 24px Arial'; ctx.fillStyle = '#ff6b35';
+    ctx.font = fEmoji;
+    ctx.fillText('🍜', cx - canvasW * 0.10, canvasH * 0.30);
+    ctx.fillText('🥛', cx + canvasW * 0.10, canvasH * 0.30);
+    ctx.font = fMed;  ctx.fillStyle = '#ff6b35';
     ctx.fillText('Ramen = speed boost', cx, canvasH * 0.52);
-    ctx.font = 'bold 24px Arial'; ctx.fillStyle = '#d4a017';
-    ctx.fillText("Bailey's = invincible!", cx, canvasH * 0.63);
-    ctx.font = '15px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillText('Grab them whenever you can', cx, canvasH * 0.74);
+    ctx.font = fSub;  ctx.fillStyle = '#d4a017';
+    ctx.fillText("Bailey's = invincible!  Grab both!", cx, canvasH * 0.67);
 
   } else if (p === 4) {
-    ctx.font = '80px Arial'; ctx.fillText('🐱', cx, canvasH * 0.33);
-    ctx.font = 'bold 28px Arial'; ctx.fillStyle = '#ffaacc';
-    ctx.fillText('Bunny Buns = extra life!', cx, canvasH * 0.53);
-    ctx.font = '18px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.fillText('Collect her whenever she appears', cx, canvasH * 0.64);
-    ctx.fillText('to keep flying 🐱', cx, canvasH * 0.73);
+    ctx.font = fEmoji; ctx.fillText('🐱', cx, canvasH * 0.30);
+    ctx.font = fMed;  ctx.fillStyle = '#ffaacc';
+    ctx.fillText('Bunny Buns = extra life!', cx, canvasH * 0.52);
+    ctx.font = fSub;  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText('Collect her whenever she appears 🐱', cx, canvasH * 0.67);
 
   } else if (p === 5) {
-    ctx.font = '52px Arial'; ctx.fillText('🐱', cx - 40, canvasH * 0.28);
-    ctx.font = '52px Arial'; ctx.fillText('🤖', cx + 40, canvasH * 0.28);
-    ctx.font = 'bold 22px Arial'; ctx.fillStyle = '#ffaacc';
-    ctx.fillText('Bunny Buns says:', cx, canvasH * 0.48);
-    ctx.font = 'bold 28px Arial'; ctx.fillStyle = '#ff4444';
-    ctx.fillText('AVOID DAD\'S AI! 🤖', cx, canvasH * 0.60);
-    ctx.font = '15px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillText('It\'s labeled "DAD\'S AI" — don\'t touch it', cx, canvasH * 0.71);
+    ctx.font = fEmoji;
+    ctx.fillText('🐱', cx - canvasW * 0.08, canvasH * 0.28);
+    ctx.fillText('🤖', cx + canvasW * 0.08, canvasH * 0.28);
+    ctx.font = fMed;  ctx.fillStyle = '#ff4444';
+    ctx.fillText("AVOID DAD'S AI! 🤖", cx, canvasH * 0.52);
+    ctx.font = fSub;  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('It\'s labeled "DAD\'S AI" — Bunny says don\'t touch it', cx, canvasH * 0.67);
 
   } else if (p === 6) {
-    ctx.font = '80px Arial'; ctx.fillText('🌭', cx, canvasH * 0.32);
-    ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#ff8c00';
-    ctx.fillText('Touch the hot dog guy', cx, canvasH * 0.50);
-    ctx.font = '18px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillText('(from I Think You Should Leave)', cx, canvasH * 0.60);
-    ctx.font = '22px Arial'; ctx.fillStyle = '#fff';
-    ctx.fillText('for bonus points!', cx, canvasH * 0.70);
+    ctx.font = fEmoji; ctx.fillText('🌭', cx, canvasH * 0.30);
+    ctx.font = fMed;  ctx.fillStyle = '#ff8c00';
+    ctx.fillText('Touch the hot dog guy!', cx, canvasH * 0.52);
+    ctx.font = fSub;  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('(from I Think You Should Leave) = bonus points', cx, canvasH * 0.67);
   }
+
+  ctx.textBaseline = 'alphabetic';
 
   // Bottom prompt
   const pulse = 0.75 + Math.sin(STATE.frame * 0.07) * 0.25;
   ctx.save(); ctx.globalAlpha = pulse; ctx.textAlign = 'center';
   if (p < 6) {
-    ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#fff';
+    ctx.font = fSub; ctx.fillStyle = '#fff';
     ctx.fillText('Tap for next →', cx, canvasH * 0.82);
   } else {
-    ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#6bcb77';
+    ctx.font = fMed; ctx.fillStyle = '#6bcb77';
     ctx.fillText('TAP TO BEGIN ✈️', cx, canvasH * 0.82);
   }
   ctx.restore();
 
-  // Skip link (bottom strip — tap here to skip)
+  // Skip link — single line
   if (p < 6) {
-    ctx.save();
-    ctx.globalAlpha = 0.85;
-    ctx.textAlign = 'center';
-    ctx.font = `bold ${Math.round(canvasW * 0.042)}px Arial`;
-    ctx.fillStyle = '#aac8ff';
-    ctx.fillText('Skip — I already know how to play.', cx, canvasH * 0.92);
-    ctx.fillText('Tap here to begin.', cx, canvasH * 0.97);
+    ctx.save(); ctx.globalAlpha = 0.75; ctx.textAlign = 'center';
+    ctx.font = fSmall; ctx.fillStyle = '#aac8ff';
+    ctx.fillText('Skip — I already know how to play. Tap here to begin.', cx, canvasH * 0.93);
     ctx.restore();
   }
 }
