@@ -228,6 +228,9 @@ const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 let canvasW = 0, canvasH = 0;
 
+const isMobile = () => ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+const isPortrait = () => window.innerHeight > window.innerWidth;
+
 function resize() {
   canvasW = canvas.width = window.innerWidth;
   canvasH = canvas.height = window.innerHeight;
@@ -343,6 +346,7 @@ function flap() {
 }
 
 function handleTap(clientX, clientY) {
+  if (isMobile() && isPortrait()) return; // blocked — rotate prompt is showing
   if (STATE.screen === 'instructions') {
     const rect = canvas.getBoundingClientRect();
     const tapY = (clientY - rect.top) / rect.height * canvasH;
@@ -700,6 +704,14 @@ function drawInstructionsScreen() {
     ctx.fillText('to fly up', cx, canvasH * 0.50);
     ctx.font = '22px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
     ctx.fillText('Like Flappy Bird!', cx, canvasH * 0.63);
+    if (isMobile()) {
+      ctx.font = `bold ${Math.round(canvasW * 0.048)}px Arial`;
+      ctx.fillStyle = '#ffe94d';
+      ctx.fillText('📱 Turn your phone sideways', cx, canvasH * 0.77);
+      ctx.font = `${Math.round(canvasW * 0.038)}px Arial`;
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillText('for the best experience!', cx, canvasH * 0.85);
+    }
 
   } else if (p === 1) {
     ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#fff';
@@ -1058,24 +1070,43 @@ function update() {
   updateRandomEvents();
 }
 
+function drawRotatePrompt() {
+  if (!isMobile() || !isPortrait()) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(10,10,30,0.93)';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `${Math.round(canvasW * 0.22)}px Arial`;
+  ctx.fillText('↻', canvasW / 2, canvasH * 0.35);
+  ctx.font = `bold ${Math.round(canvasW * 0.072)}px Arial`;
+  ctx.fillStyle = '#fff';
+  ctx.fillText('Turn your phone sideways!', canvasW / 2, canvasH * 0.58);
+  ctx.font = `${Math.round(canvasW * 0.052)}px Arial`;
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.fillText('Landscape mode plays way better', canvasW / 2, canvasH * 0.70);
+  ctx.restore();
+}
+
 function draw() {
   ctx.clearRect(0, 0, canvasW, canvasH);
-  if (STATE.screen === 'start') { drawStartScreen(); return; }
-  if (STATE.screen === 'instructions') { drawInstructionsScreen(); return; }
-  if (STATE.screen === 'dead') { drawDeadScreen(); return; }
-  if (STATE.screen === 'win') { drawWinScreen(); return; }
-
-  drawBackground();
-  drawGround();
-  drawObstacles();
-  drawCollectibles();
-  drawCollectibleArrows();
-  drawFloatingTexts();
-  drawPlane();
-  drawZoneLabel();
-  drawHUD();
-  drawLevelUpFlash();
-  drawRandomEventOverlays();
+  if (STATE.screen === 'start') { drawStartScreen(); }
+  else if (STATE.screen === 'instructions') { drawInstructionsScreen(); }
+  else if (STATE.screen === 'dead') { drawDeadScreen(); }
+  else if (STATE.screen === 'win') { drawWinScreen(); }
+  else {
+    drawBackground();
+    drawGround();
+    drawObstacles();
+    drawCollectibles();
+    drawCollectibleArrows();
+    drawFloatingTexts();
+    drawPlane();
+    drawZoneLabel();
+    drawHUD();
+    drawLevelUpFlash();
+    drawRandomEventOverlays();
+  }
+  drawRotatePrompt();
 }
 
 loop();
