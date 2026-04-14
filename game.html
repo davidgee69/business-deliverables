@@ -32,7 +32,7 @@ const CONFIG = {
 const STATE = {
   screen: 'start',
   player: { y: 0, vy: 0, w: 52, h: 28,
-            lives: 3, invincible: false, invincibleTimer: 0,
+            lives: 9, invincible: false, invincibleTimer: 0,
             speedBoost: false, speedTimer: 0,
             multiplier: 1, multiplierTimer: 0, wobble: 0 },
   obstacles: [], collectibles: [], particles: [], events: [],
@@ -289,7 +289,7 @@ function resetGame() {
   STATE.screen = 'start';
   STATE.player.y = canvasH * 0.45;
   STATE.player.vy = 0;
-  STATE.player.lives = 3;
+  STATE.player.lives = 9;
   STATE.player.invincible = false;
   STATE.player.invincibleTimer = 0;
   STATE.player.speedBoost = false;
@@ -567,7 +567,7 @@ function applyCollectible(c) {
     p.invincible = true; p.invincibleTimer = 180; STATE.score += 50;
     showFloatingText(c.x, c.y, "BAILEY'S! INVINCIBLE", '#d4a017');
   } else if (c.type === 'bunny') {
-    if (p.lives < 3) p.lives++; STATE.score += 200;
+    if (p.lives < 9) p.lives++; STATE.score += 200;
     showFloatingText(c.x, c.y, '+LIFE 🐱 BUNNY!', '#ffaacc');
   } else if (c.type === 'thrift') {
     STATE.score += 500;
@@ -636,12 +636,13 @@ function drawHUD() {
   ctx.strokeText(`${STATE.score}`, canvasW - 16, 34);
   ctx.fillText(`${STATE.score}`, canvasW - 16, 34); ctx.restore();
 
-  // Lives (Bunny icons)
-  for (let i = 0; i < 3; i++) {
-    ctx.save(); ctx.globalAlpha = i < p.lives ? 1 : 0.25;
-    ctx.font = '26px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('🐱', 18 + i * 36, 20); ctx.restore();
-  }
+  // Lives (Bunny icon + count)
+  ctx.save(); ctx.font = '22px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('🐱', 8, 20); ctx.restore();
+  ctx.save(); ctx.font = 'bold 18px Arial'; ctx.fillStyle = '#fff';
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.strokeText(`x${p.lives}`, 36, 20); ctx.fillText(`x${p.lives}`, 36, 20); ctx.restore();
 
   // Power-up bar
   let powerLabel = '', powerColor = '', powerFrac = 0;
@@ -1025,7 +1026,7 @@ function update() {
   const gravityByLevel = [0.07, 0.045, 0.058, 0.075, 0.10, 0.14];
   p.vy += gravityByLevel[lvl];
 
-  const speedByLevel   = [0.5, 0.5, 0.62, 0.85, 1.2, 1.7];
+  const speedByLevel   = [0.5, 1.1, 1.3, 1.6, 2.0, 2.6];
   STATE.scrollSpeed = speedByLevel[lvl];
   if (p.speedBoost) STATE.scrollSpeed *= 1.6;
   STATE.distance += STATE.scrollSpeed;
