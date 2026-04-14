@@ -74,6 +74,154 @@ function spawnConfetti() {
   // Filled in Task 9
 }
 
+// ─── DRAW: BACKGROUND ─────────────────────────────────────────────────────────
+function drawBackground() {
+  const z = STATE.zone;
+
+  if (z === 0) {
+    // Europe: sky blue gradient
+    const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+    g.addColorStop(0, '#87CEEB');
+    g.addColorStop(1, '#c8e6c9');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Scrolling tulip fields on ground
+    const offset = (STATE.distance * 0.5) % 120;
+    for (let x = -offset; x < canvasW + 120; x += 120) {
+      drawTulip(x + 20, canvasH - CONFIG.groundH);
+      drawTulip(x + 70, canvasH - CONFIG.groundH);
+    }
+
+    // Windmill silhouettes on horizon
+    const wOff = (STATE.distance * 0.3) % 300;
+    for (let x = -wOff; x < canvasW + 300; x += 300) {
+      drawWindmillSilhouette(x, canvasH - CONFIG.groundH - 40);
+    }
+  } else if (z === 1) {
+    // Atlantic: dark ocean
+    const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+    g.addColorStop(0, '#1a2a4a');
+    g.addColorStop(0.5, '#0d3b6e');
+    g.addColorStop(1, '#051935');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Eerie green glow at bottom (Old Gregg vibes)
+    const og = ctx.createLinearGradient(0, canvasH - 200, 0, canvasH);
+    og.addColorStop(0, 'rgba(0,255,100,0)');
+    og.addColorStop(1, 'rgba(0,255,100,0.15)');
+    ctx.fillStyle = og;
+    ctx.fillRect(0, canvasH - 200, canvasW, 200);
+
+    // Waves
+    drawWaves();
+  } else {
+    // America: warm sunset
+    const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+    g.addColorStop(0, '#ff9a3c');
+    g.addColorStop(0.4, '#ffcc70');
+    g.addColorStop(1, '#c8e6c9');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Clouds
+    const cOff = (STATE.distance * 0.4) % 350;
+    for (let x = -cOff; x < canvasW + 350; x += 350) {
+      drawCloud(x + 80, canvasH * 0.25);
+      drawCloud(x + 250, canvasH * 0.15);
+    }
+  }
+}
+
+function drawTulip(x, y) {
+  ctx.fillStyle = '#e53935';
+  ctx.beginPath();
+  ctx.arc(x, y - 10, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#43a047';
+  ctx.fillRect(x - 1, y - 10, 2, 18);
+}
+
+function drawWindmillSilhouette(x, y) {
+  ctx.fillStyle = 'rgba(100,120,100,0.4)';
+  ctx.fillRect(x - 3, y - 50, 6, 50);
+  const angle = STATE.frame * 0.015;
+  ctx.save();
+  ctx.translate(x, y - 50);
+  ctx.rotate(angle);
+  ctx.fillStyle = 'rgba(100,120,100,0.4)';
+  for (let i = 0; i < 4; i++) {
+    ctx.save();
+    ctx.rotate((Math.PI / 2) * i);
+    ctx.fillRect(-2, -22, 4, 22);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawWaves() {
+  const offset = (STATE.distance * 0.8) % canvasW;
+  ctx.strokeStyle = 'rgba(0,200,255,0.2)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    const y = canvasH * 0.65 + i * 30;
+    ctx.beginPath();
+    for (let x = -offset; x < canvasW + 60; x += 60) {
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x + 15, y - 8, x + 45, y + 8, x + 60, y);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawCloud(x, y) {
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.beginPath();
+  ctx.arc(x, y, 22, 0, Math.PI * 2);
+  ctx.arc(x + 25, y - 8, 18, 0, Math.PI * 2);
+  ctx.arc(x + 48, y, 20, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawGround() {
+  const z = STATE.zone;
+  const colors = ['#5d8a3c', '#1a4a6e', '#6aaa55'];
+  ctx.fillStyle = colors[z];
+  ctx.fillRect(0, canvasH - CONFIG.groundH, canvasW, CONFIG.groundH);
+
+  if (z === 2) {
+    const tOff = (STATE.distance * 0.5) % 400;
+    for (let x = -tOff; x < canvasW + 400; x += 400) {
+      drawThriftStoreSilhouette(x + 80);
+      drawThriftStoreSilhouette(x + 260);
+    }
+  }
+}
+
+function drawThriftStoreSilhouette(x) {
+  const y = canvasH - CONFIG.groundH;
+  ctx.fillStyle = 'rgba(80,50,30,0.5)';
+  ctx.fillRect(x, y - 35, 50, 35);
+  ctx.fillStyle = 'rgba(60,30,10,0.5)';
+  ctx.fillRect(x - 5, y - 42, 60, 10);
+  ctx.fillStyle = 'rgba(200,180,50,0.6)';
+  ctx.fillRect(x + 8, y - 28, 34, 12);
+}
+
+function drawZoneLabel() {
+  if (STATE.zoneLabel.alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = STATE.zoneLabel.alpha;
+  ctx.font = 'bold 22px Arial';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 8;
+  ctx.fillText(STATE.zoneLabel.text, canvasW / 2, canvasH * 0.15);
+  ctx.restore();
+}
+
 // ─── CANVAS ───────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
@@ -250,9 +398,10 @@ function draw() {
     return;
   }
 
-  ctx.fillStyle = '#87CEEB';
-  ctx.fillRect(0, 0, canvasW, canvasH);
+  drawBackground();
+  drawGround();
   drawPlane();
+  drawZoneLabel();
 }
 
 loop();
