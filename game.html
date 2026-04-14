@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Eirene's Great Escape ✈️</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const CONFIG = {
+  gravity: 0.38,
+  flapForce: -8.5,
+  baseScrollSpeed: 3,
+  totalDistance: 9000,
+  zoneLength: 3000,
+  groundH: 55,
+  playerX: null,
+  obstacleGap: 185,
+  obstacleW: 58,
+  minObstacleSpacing: 320,
+  collectibleSize: 28,
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const STATE = {
+  screen: 'start',
+  player: { y: 0, vy: 0, w: 52, h: 28,
+            lives: 3, invincible: false, invincibleTimer: 0,
+            speedBoost: false, speedTimer: 0,
+            multiplier: 1, multiplierTimer: 0, wobble: 0 },
+  obstacles: [], collectibles: [], particles: [], events: [],
+  hotDogGuy: null,
+  score: 0, distance: 0,
+  scrollSpeed: 3,
+  zone: 0,
+  zoneLabel: { text: '', alpha: 0 },
+  deathQuoteIdx: 0, frame: 0,
+  oldGreggWarningTimer: 0,
+  iasylTimer: 0, nextIasyl: 1800,
+  aiRobotTimer: 0, nextAiRobot: 600,
+  nextHotDog: 2400,
+};
+
+const DEATH_QUOTES = [
+  "ARE YOU PLAYING GAMES WITH OLD GREGG?!",
+  "You're going to look at it.",
+  "I got the funk. Have you got the funk?",
+  "This game was made with AI. That's probably why it's broken.",
+  "Do you want to come to a party at the end of the universe?",
+  "STOP TALKING. STOP TALKING. (you crashed)",
+];
+
+// ─── CANVAS ───────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let canvasW = 0, canvasH = 0;
+
+function resize() {
+  canvasW = canvas.width = window.innerWidth;
+  canvasH = canvas.height = window.innerHeight;
+  CONFIG.playerX = canvasW * 0.2;
+  if (STATE.screen === 'start') STATE.player.y = canvasH * 0.45;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── GAME LOOP ────────────────────────────────────────────────────────────────
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function update() {
+  if (STATE.screen !== 'game') return;
+  STATE.frame++;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  ctx.fillStyle = '#87CEEB';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+}
+
+loop();
+</script>
+</body>
+</html>
