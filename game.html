@@ -15,16 +15,16 @@
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const CONFIG = {
-  gravity: 0.28,
-  flapForce: -7.0,
-  baseScrollSpeed: 1.8,
+  gravity: 0.20,
+  flapForce: -6.2,
+  baseScrollSpeed: 1.2,
   totalDistance: 9000,
   zoneLength: 3000,
   groundH: 55,
   playerX: null,
-  obstacleGap: 260,      // starts wide, shrinks with distance
+  obstacleGap: 340,      // starts huge, shrinks with distance
   obstacleW: 58,
-  minObstacleSpacing: 480,
+  minObstacleSpacing: 620,
   collectibleSize: 28,
 };
 
@@ -334,9 +334,9 @@ canvas.addEventListener('touchstart', (e) => { e.preventDefault(); flap(); }, { 
 
 // ─── OBSTACLES ────────────────────────────────────────────────────────────────
 function getDynamicGap() {
-  // Starts at obstacleGap (260), shrinks to 155 by end
+  // Starts at 340 (huge), shrinks to 150 by end
   const progress = Math.min(1, STATE.distance / CONFIG.totalDistance);
-  return CONFIG.obstacleGap - progress * 105;
+  return CONFIG.obstacleGap - progress * 190;
 }
 
 function spawnObstacle() {
@@ -376,6 +376,9 @@ function spawnAiRobot() {
 }
 
 function updateObstacles() {
+  // No obstacles for first 800px — free warmup
+  if (STATE.distance < 800) return;
+
   const lastX = STATE.obstacles.filter(o => o.type !== 'ai_robot').length
     ? STATE.obstacles.filter(o => o.type !== 'ai_robot').slice(-1)[0].x
     : -999;
