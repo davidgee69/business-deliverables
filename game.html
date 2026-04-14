@@ -46,6 +46,7 @@ const STATE = {
   iasylTimer: 0, nextIasyl: 1800,
   aiRobotTimer: 0, nextAiRobot: 600,
   nextHotDog: 2400,
+  instructionPage: 0,
 };
 
 const DEATH_QUOTES = [
@@ -310,6 +311,7 @@ function resetGame() {
   STATE.aiRobotTimer = 0;
   STATE.nextAiRobot = 600;
   STATE.nextHotDog = 2400;
+  STATE.instructionPage = 0;
 }
 
 function startGame() {
@@ -323,7 +325,11 @@ function flap() {
   } else if (STATE.screen === 'start') {
     STATE.screen = 'instructions';
   } else if (STATE.screen === 'instructions') {
-    startGame();
+    if (STATE.instructionPage < 6) {
+      STATE.instructionPage++;
+    } else {
+      startGame();
+    }
   } else if (STATE.screen === 'dead' || STATE.screen === 'win') {
     resetGame();
   }
@@ -611,44 +617,92 @@ function drawInstructionsScreen() {
   ctx.fillStyle = g; ctx.fillRect(0, 0, canvasW, canvasH);
 
   const cx = canvasW / 2;
+  const p = STATE.instructionPage;
+
+  // Page dots
+  for (let i = 0; i <= 6; i++) {
+    ctx.beginPath();
+    ctx.arc(cx - 42 + i * 14, canvasH * 0.06, 4, 0, Math.PI * 2);
+    ctx.fillStyle = i === p ? '#fff' : 'rgba(255,255,255,0.3)';
+    ctx.fill();
+  }
+
   ctx.textAlign = 'center';
 
-  // Big red header
-  ctx.font = 'bold 19px Arial'; ctx.fillStyle = '#ff3333';
-  ctx.fillText('⚠️ READ THIS EVEN IF YOU DON\'T FEEL LIKE IT ⚠️', cx, canvasH * 0.08);
+  if (p === 0) {
+    ctx.font = 'bold 17px Arial'; ctx.fillStyle = '#ff3333';
+    ctx.fillText('⚠️ READ THIS EVEN IF YOU DON\'T FEEL LIKE IT ⚠️', cx, canvasH * 0.18);
+    ctx.font = 'bold 34px Arial'; ctx.fillStyle = '#fff';
+    ctx.fillText('👆 TAP ANYWHERE', cx, canvasH * 0.38);
+    ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#87ceeb';
+    ctx.fillText('to fly up', cx, canvasH * 0.50);
+    ctx.font = '22px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText('Like Flappy Bird!', cx, canvasH * 0.63);
 
-  // Title
-  ctx.font = 'bold 24px Arial'; ctx.fillStyle = '#fff';
-  ctx.shadowColor = '#4a8fdd'; ctx.shadowBlur = 12;
-  ctx.fillText('HOW TO PLAY', cx, canvasH * 0.16);
-  ctx.shadowBlur = 0;
+  } else if (p === 1) {
+    ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#fff';
+    ctx.fillText('Keep tapping to stay up.', cx, canvasH * 0.32);
+    ctx.font = '22px Arial'; ctx.fillStyle = '#ff9a9a';
+    ctx.fillText('Stop tapping = you fall. ↓', cx, canvasH * 0.44);
+    ctx.font = '20px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText('Fly through the GAP in the', cx, canvasH * 0.60);
+    ctx.fillText('brown windmills for points!', cx, canvasH * 0.70);
 
-  // Difficulty warning
-  ctx.font = 'bold 14px Arial'; ctx.fillStyle = '#ffd700';
-  ctx.fillText('Starts easy — gets harder the closer you get to home!', cx, canvasH * 0.23);
+  } else if (p === 2) {
+    ctx.font = '72px Arial'; ctx.fillText('🦑', cx, canvasH * 0.33);
+    ctx.font = 'bold 24px Arial'; ctx.fillStyle = '#5dffb0';
+    ctx.fillText('Dodge Old Gregg\'s tentacles', cx, canvasH * 0.52);
+    ctx.font = '20px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText('in the Atlantic zone', cx, canvasH * 0.63);
+    ctx.font = '15px Arial'; ctx.fillStyle = '#ffd700';
+    ctx.fillText('(zone 2 — the dark spooky part)', cx, canvasH * 0.73);
 
-  // Instructions — each line fully centered as one unit
-  const lines = [
-    '👆 TAP ANYWHERE to fly up — like Flappy Bird!',
-    '✈️ Keep tapping to stay up. Stop tapping = you fall.',
-    '🌬️ Fly through the GAP in the brown windmills',
-    '🦑 Dodge tentacles in the Atlantic (zone 2)',
-    '🍜 Ramen = speed boost  •  🥛 Bailey\'s = invincible',
-    '🐱 Bunny = extra life  •  🤖 Avoid Dad\'s AI',
-    '🌭 Touch the hot dog guy for bonus points',
-  ];
+  } else if (p === 3) {
+    ctx.font = '60px Arial'; ctx.fillText('🍜', cx - 50, canvasH * 0.32);
+    ctx.font = '60px Arial'; ctx.fillText('🥛', cx + 50, canvasH * 0.32);
+    ctx.font = 'bold 24px Arial'; ctx.fillStyle = '#ff6b35';
+    ctx.fillText('Ramen = speed boost', cx, canvasH * 0.52);
+    ctx.font = 'bold 24px Arial'; ctx.fillStyle = '#d4a017';
+    ctx.fillText("Bailey's = invincible!", cx, canvasH * 0.63);
+    ctx.font = '15px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('Grab them whenever you can', cx, canvasH * 0.74);
 
-  ctx.font = '14px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.9)';
-  const lineH = canvasH * 0.072;
-  lines.forEach((line, i) => {
-    ctx.fillText(line, cx, canvasH * 0.31 + i * lineH);
-  });
+  } else if (p === 4) {
+    ctx.font = '80px Arial'; ctx.fillText('🐱', cx, canvasH * 0.33);
+    ctx.font = 'bold 28px Arial'; ctx.fillStyle = '#ffaacc';
+    ctx.fillText('Bunny Buns = extra life!', cx, canvasH * 0.53);
+    ctx.font = '18px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillText('Collect her whenever she appears', cx, canvasH * 0.64);
+    ctx.fillText('to keep flying 🐱', cx, canvasH * 0.73);
 
-  // Pulse tap to begin
-  const pulse = 0.75 + Math.sin(STATE.frame * 0.06) * 0.25;
-  ctx.save(); ctx.globalAlpha = pulse;
-  ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#fff';
-  ctx.fillText('TAP TO BEGIN ✈️', cx, canvasH * 0.93);
+  } else if (p === 5) {
+    ctx.font = '52px Arial'; ctx.fillText('🐱', cx - 40, canvasH * 0.28);
+    ctx.font = '52px Arial'; ctx.fillText('🤖', cx + 40, canvasH * 0.28);
+    ctx.font = 'bold 22px Arial'; ctx.fillStyle = '#ffaacc';
+    ctx.fillText('Bunny Buns says:', cx, canvasH * 0.48);
+    ctx.font = 'bold 28px Arial'; ctx.fillStyle = '#ff4444';
+    ctx.fillText('AVOID DAD\'S AI! 🤖', cx, canvasH * 0.60);
+    ctx.font = '15px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('It\'s labeled "DAD\'S AI" — don\'t touch it', cx, canvasH * 0.71);
+
+  } else if (p === 6) {
+    ctx.font = '80px Arial'; ctx.fillText('🌭', cx, canvasH * 0.32);
+    ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#ff8c00';
+    ctx.fillText('Touch the hot dog guy', cx, canvasH * 0.52);
+    ctx.font = '22px Arial'; ctx.fillStyle = '#fff';
+    ctx.fillText('for bonus points!', cx, canvasH * 0.63);
+  }
+
+  // Bottom prompt
+  const pulse = 0.75 + Math.sin(STATE.frame * 0.07) * 0.25;
+  ctx.save(); ctx.globalAlpha = pulse; ctx.textAlign = 'center';
+  if (p < 6) {
+    ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#fff';
+    ctx.fillText('Tap for next →', cx, canvasH * 0.88);
+  } else {
+    ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#6bcb77';
+    ctx.fillText('TAP TO BEGIN ✈️', cx, canvasH * 0.88);
+  }
   ctx.restore();
 }
 
