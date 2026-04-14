@@ -15,16 +15,16 @@
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const CONFIG = {
-  gravity: 0.38,
-  flapForce: -8.5,
-  baseScrollSpeed: 3,
+  gravity: 0.28,
+  flapForce: -7.0,
+  baseScrollSpeed: 1.8,
   totalDistance: 9000,
   zoneLength: 3000,
   groundH: 55,
   playerX: null,
-  obstacleGap: 185,
+  obstacleGap: 260,      // starts wide, shrinks with distance
   obstacleW: 58,
-  minObstacleSpacing: 320,
+  minObstacleSpacing: 480,
   collectibleSize: 28,
 };
 
@@ -321,6 +321,8 @@ function flap() {
   if (STATE.screen === 'game') {
     STATE.player.vy = CONFIG.flapForce;
   } else if (STATE.screen === 'start') {
+    STATE.screen = 'instructions';
+  } else if (STATE.screen === 'instructions') {
     startGame();
   } else if (STATE.screen === 'dead' || STATE.screen === 'win') {
     resetGame();
@@ -331,18 +333,25 @@ canvas.addEventListener('click', flap);
 canvas.addEventListener('touchstart', (e) => { e.preventDefault(); flap(); }, { passive: false });
 
 // ─── OBSTACLES ────────────────────────────────────────────────────────────────
+function getDynamicGap() {
+  // Starts at obstacleGap (260), shrinks to 155 by end
+  const progress = Math.min(1, STATE.distance / CONFIG.totalDistance);
+  return CONFIG.obstacleGap - progress * 105;
+}
+
 function spawnObstacle() {
   const z = STATE.zone;
-  const gapCenter = CONFIG.groundH + CONFIG.obstacleGap + Math.random() * (canvasH - CONFIG.groundH - CONFIG.obstacleGap * 2.2 - 60);
+  const gap = getDynamicGap();
+  const gapCenter = CONFIG.groundH + gap + Math.random() * (canvasH - CONFIG.groundH - gap * 2.2 - 60);
   const x = canvasW + 10;
 
   if (z === 0 || z === 2) {
     STATE.obstacles.push({
       type: 'windmill', x,
       gapCenter,
-      topH: gapCenter - CONFIG.obstacleGap / 2,
-      bottomY: gapCenter + CONFIG.obstacleGap / 2,
-      bottomH: canvasH - CONFIG.groundH - (gapCenter + CONFIG.obstacleGap / 2),
+      topH: gapCenter - gap / 2,
+      bottomY: gapCenter + gap / 2,
+      bottomH: canvasH - CONFIG.groundH - (gapCenter + gap / 2),
       w: CONFIG.obstacleW,
       angle: 0,
     });
@@ -350,7 +359,7 @@ function spawnObstacle() {
     if (Math.random() < 0.5) {
       STATE.obstacles.push({ type: 'tentacle', x, gapCenter, w: CONFIG.obstacleW, collisionTopY: 0, collisionH: 0 });
     } else {
-      STATE.obstacles.push({ type: 'fog', x, gapCenter, w: 70 });
+      STATE.obstacles.push({ type: 'fog', x, gapCenter, gap, w: 70 });
     }
   }
 }
@@ -432,8 +441,8 @@ function drawTentacle(o) {
 
 function drawFogWall(o) {
   ctx.fillStyle = 'rgba(180,200,220,0.75)';
-  ctx.fillRect(o.x, 0, o.w, o.gapCenter - CONFIG.obstacleGap / 2);
-  ctx.fillRect(o.x, o.gapCenter + CONFIG.obstacleGap / 2, o.w, canvasH - CONFIG.groundH - (o.gapCenter + CONFIG.obstacleGap / 2));
+  ctx.fillRect(o.x, 0, o.w, o.gapCenter - o.gap / 2);
+  ctx.fillRect(o.x, o.gapCenter + o.gap / 2, o.w, canvasH - CONFIG.groundH - (o.gapCenter + o.gap / 2));
 }
 
 function drawAiRobot(o) {
@@ -588,6 +597,48 @@ function drawHUD() {
   ctx.fillStyle = '#fff'; ctx.fillRect(barX, 8, barW * Math.min(1, STATE.distance / CONFIG.totalDistance), 6);
   ctx.font = '14px Arial'; ctx.textAlign = 'center';
   ctx.fillText('✈️', barX + barW * Math.min(1, STATE.distance / CONFIG.totalDistance), 22);
+}
+
+// ─── SCREEN: INSTRUCTIONS ────────────────────────────────────────────────────
+function drawInstructionsScreen() {
+  const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+  g.addColorStop(0, '#1a2a5e'); g.addColorStop(1, '#0d1b3e');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, canvasW, canvasH);
+
+  ctx.save(); ctx.textAlign = 'center';
+
+  ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#4a8fdd'; ctx.shadowBlur = 15;
+  ctx.fillText('HOW TO PLAY', canvasW / 2, canvasH * 0.12);
+  ctx.shadowBlur = 0;
+
+  const instructions = [
+    ['✈️', 'TAP to fly up — tap repeatedly!'],
+    ['🌬️', 'Fly through the GAP in windmills'],
+    ['🦑', 'Dodge Old Gregg\'s tentacles in the Atlantic'],
+    ['🍜', 'Ramen = speed boost'],
+    ['🥛', 'Bailey\'s = invincible'],
+    ['🐱', 'Bunny = extra life'],
+    ['🤖', 'Avoid Dad\'s AI — it crashes things'],
+    ['🌭', 'Touch the hot dog guy for bonus points'],
+  ];
+
+  instructions.forEach(([emoji, text], i) => {
+    const y = canvasH * 0.24 + i * (canvasH * 0.075);
+    ctx.font = '22px Arial'; ctx.textAlign = 'right';
+    ctx.fillStyle = '#fff'; ctx.fillText(emoji, canvasW / 2 - 10, y);
+    ctx.font = '15px Arial'; ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.fillText(text, canvasW / 2, y);
+  });
+
+  const pulse = 0.85 + Math.sin(STATE.frame * 0.06) * 0.15;
+  ctx.save(); ctx.globalAlpha = pulse; ctx.textAlign = 'center';
+  ctx.font = 'bold 18px Arial'; ctx.fillStyle = '#fff';
+  ctx.fillText('TAP TO BEGIN ✈️', canvasW / 2, canvasH * 0.92);
+  ctx.restore();
+
+  ctx.restore();
 }
 
 // ─── SCREEN: START ────────────────────────────────────────────────────────────
@@ -797,6 +848,7 @@ function loop() {
 function update() {
   STATE.frame++;
   if (STATE.screen === 'start') return;
+  if (STATE.screen === 'instructions') return;
   if (STATE.screen === 'win') { updateParticles(); return; }
   if (STATE.screen === 'dead') return;
 
@@ -836,6 +888,7 @@ function update() {
 function draw() {
   ctx.clearRect(0, 0, canvasW, canvasH);
   if (STATE.screen === 'start') { drawStartScreen(); return; }
+  if (STATE.screen === 'instructions') { drawInstructionsScreen(); return; }
   if (STATE.screen === 'dead') { drawDeadScreen(); return; }
   if (STATE.screen === 'win') { drawWinScreen(); return; }
 
