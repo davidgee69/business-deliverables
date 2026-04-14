@@ -48,6 +48,8 @@ const STATE = {
   nextHotDog: 2400,
   instructionPage: 0,
   gameFrames: 0,
+  currentLevel: 1,
+  levelUpFlash: { text: '', alpha: 0 },
 };
 
 const DEATH_QUOTES = [
@@ -314,6 +316,8 @@ function resetGame() {
   STATE.nextHotDog = 2400;
   STATE.instructionPage = 0;
   STATE.gameFrames = 0;
+  STATE.currentLevel = 1;
+  STATE.levelUpFlash = { text: '', alpha: 0 };
 }
 
 function startGame() {
@@ -946,6 +950,23 @@ function updateRandomEvents() {
   updateHotDogGuy();
 }
 
+function drawLevelUpFlash() {
+  if (!STATE.levelUpFlash || STATE.levelUpFlash.alpha <= 0) return;
+  const a = STATE.levelUpFlash.alpha;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, a * 2);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const fontSize = Math.round(canvasW * 0.065);
+  ctx.font = `bold ${fontSize}px Arial`;
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.lineWidth = 5;
+  ctx.strokeText(STATE.levelUpFlash.text, canvasW / 2, canvasH * 0.38);
+  ctx.fillStyle = '#ffe94d';
+  ctx.fillText(STATE.levelUpFlash.text, canvasW / 2, canvasH * 0.38);
+  ctx.restore();
+}
+
 function drawRandomEventOverlays() {
   // Old Gregg warning
   if (STATE.oldGreggWarningTimer > 60) {
@@ -981,7 +1002,6 @@ function update() {
   if (STATE.screen === 'dead') return;
 
   const p = STATE.player;
-  p.vy += CONFIG.gravity;
   p.y += p.vy;
 
   if (p.invincible) { p.invincibleTimer--; if (p.invincibleTimer <= 0) p.invincible = false; }
@@ -991,8 +1011,22 @@ function update() {
   if (p.y - p.h / 2 < 0 || p.y + p.h / 2 > canvasH - CONFIG.groundH) { loseLife(); return; }
 
   STATE.gameFrames++;
-  const speedByLevel = [0.5, 0.5, 0.62, 0.85, 1.2, 1.7];
-  STATE.scrollSpeed = speedByLevel[getDifficulty()];
+
+  const lvl = getDifficulty();
+
+  // Flash when level increases
+  if (lvl > STATE.currentLevel) {
+    STATE.currentLevel = lvl;
+    const msgs = ['', '', 'Level 2 — A little harder now!', 'Level 3 — Things are picking up!', 'Level 4 — Getting real now!', 'Level 5 — Full difficulty unlocked!'];
+    STATE.levelUpFlash = { text: msgs[lvl], alpha: 1.0 };
+  }
+  if (STATE.levelUpFlash.alpha > 0) STATE.levelUpFlash.alpha -= 0.005;
+
+  const gravityByLevel = [0.07, 0.045, 0.058, 0.075, 0.10, 0.14];
+  p.vy += gravityByLevel[lvl];
+
+  const speedByLevel   = [0.5, 0.5, 0.62, 0.85, 1.2, 1.7];
+  STATE.scrollSpeed = speedByLevel[lvl];
   if (p.speedBoost) STATE.scrollSpeed *= 1.6;
   STATE.distance += STATE.scrollSpeed;
 
@@ -1031,6 +1065,7 @@ function draw() {
   drawPlane();
   drawZoneLabel();
   drawHUD();
+  drawLevelUpFlash();
   drawRandomEventOverlays();
 }
 
