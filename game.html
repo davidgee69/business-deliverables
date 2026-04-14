@@ -15,16 +15,16 @@
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const CONFIG = {
-  gravity: 0.13,
-  flapForce: -5.6,
-  baseScrollSpeed: 1.2,
+  gravity: 0.11,
+  flapForce: -5.2,
+  baseScrollSpeed: 0.9,
   totalDistance: 9000,
   zoneLength: 3000,
   groundH: 55,
   playerX: null,
-  obstacleGap: 420,      // starts huge, shrinks with distance
+  obstacleGap: 500,      // starts enormous, shrinks with distance
   obstacleW: 58,
-  minObstacleSpacing: 620,
+  minObstacleSpacing: 700,
   collectibleSize: 28,
 };
 
@@ -376,8 +376,8 @@ function spawnAiRobot() {
 }
 
 function updateObstacles() {
-  // No obstacles for first 800px — free warmup
-  if (STATE.distance < 800) return;
+  // No obstacles for first 1800px — long free warmup
+  if (STATE.distance < 1800) return;
 
   const lastX = STATE.obstacles.filter(o => o.type !== 'ai_robot').length
     ? STATE.obstacles.filter(o => o.type !== 'ai_robot').slice(-1)[0].x
@@ -621,7 +621,8 @@ function drawInstructionsScreen() {
   ctx.shadowBlur = 0;
 
   const instructions = [
-    ['✈️', 'TAP to fly up — tap repeatedly!'],
+    ['👆', 'TAP ANYWHERE on screen to fly up — like Flappy Bird!'],
+    ['✈️', 'Keep tapping to stay in the air. Stop tapping = you fall.'],
     ['🌬️', 'Fly through the GAP in windmills'],
     ['🦑', 'Dodge Old Gregg\'s tentacles in the Atlantic'],
     ['🍜', 'Ramen = speed boost'],
