@@ -57,6 +57,23 @@ const DEATH_QUOTES = [
   "STOP TALKING. STOP TALKING. (you crashed)",
 ];
 
+function loseLife() {
+  if (STATE.player.invincible) return;
+  STATE.player.lives--;
+  if (STATE.player.lives <= 0) {
+    STATE.screen = 'dead';
+    STATE.deathQuoteIdx = Math.floor(Math.random() * DEATH_QUOTES.length);
+  } else {
+    STATE.player.invincible = true;
+    STATE.player.invincibleTimer = 120;
+    STATE.player.vy = 0;
+  }
+}
+
+function spawnConfetti() {
+  // Filled in Task 9
+}
+
 // ─── CANVAS ───────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
@@ -71,6 +88,104 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// ─── DRAW: PLANE ──────────────────────────────────────────────────────────────
+function drawPlane() {
+  const p = STATE.player;
+  const x = CONFIG.playerX;
+  const y = p.y + (p.wobble > 0 ? Math.sin(p.wobble * 0.8) * 6 : 0);
+  if (p.wobble > 0) p.wobble--;
+
+  ctx.save();
+  if (p.invincible && Math.floor(STATE.frame / 6) % 2 === 0) {
+    ctx.globalAlpha = 0.4;
+  }
+
+  // Body
+  ctx.fillStyle = '#f0f0f0';
+  ctx.beginPath();
+  ctx.ellipse(x, y, 26, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wing (top)
+  ctx.fillStyle = '#4a8fdd';
+  ctx.beginPath();
+  ctx.moveTo(x - 4, y - 2);
+  ctx.lineTo(x + 12, y - 22);
+  ctx.lineTo(x + 18, y - 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Tail fin
+  ctx.fillStyle = '#4a8fdd';
+  ctx.beginPath();
+  ctx.moveTo(x - 22, y - 1);
+  ctx.lineTo(x - 12, y - 14);
+  ctx.lineTo(x - 10, y - 1);
+  ctx.closePath();
+  ctx.fill();
+
+  // Window
+  ctx.fillStyle = '#b8e0f7';
+  ctx.beginPath();
+  ctx.arc(x + 8, y - 1, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#aaa';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ─── INPUT ────────────────────────────────────────────────────────────────────
+function resetGame() {
+  STATE.screen = 'start';
+  STATE.player.y = canvasH * 0.45;
+  STATE.player.vy = 0;
+  STATE.player.lives = 3;
+  STATE.player.invincible = false;
+  STATE.player.invincibleTimer = 0;
+  STATE.player.speedBoost = false;
+  STATE.player.speedTimer = 0;
+  STATE.player.multiplier = 1;
+  STATE.player.multiplierTimer = 0;
+  STATE.player.wobble = 0;
+  STATE.obstacles = [];
+  STATE.collectibles = [];
+  STATE.particles = [];
+  STATE.events = [];
+  STATE.hotDogGuy = null;
+  STATE.score = 0;
+  STATE.distance = 0;
+  STATE.scrollSpeed = CONFIG.baseScrollSpeed;
+  STATE.zone = 0;
+  STATE.zoneLabel = { text: '', alpha: 0 };
+  STATE.frame = 0;
+  STATE.oldGreggWarningTimer = 0;
+  STATE.iasylTimer = 0;
+  STATE.nextIasyl = 1800;
+  STATE.aiRobotTimer = 0;
+  STATE.nextAiRobot = 600;
+  STATE.nextHotDog = 2400;
+}
+
+function startGame() {
+  resetGame();
+  STATE.screen = 'game';
+}
+
+function flap() {
+  if (STATE.screen === 'game') {
+    STATE.player.vy = CONFIG.flapForce;
+  } else if (STATE.screen === 'start') {
+    startGame();
+  } else if (STATE.screen === 'dead' || STATE.screen === 'win') {
+    resetGame();
+  }
+}
+
+canvas.addEventListener('click', flap);
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); flap(); }, { passive: false });
+
 // ─── GAME LOOP ────────────────────────────────────────────────────────────────
 function loop() {
   update();
@@ -79,14 +194,65 @@ function loop() {
 }
 
 function update() {
-  if (STATE.screen !== 'game') return;
   STATE.frame++;
+  if (STATE.screen === 'start') return;
+  if (STATE.screen === 'win') return;
+  if (STATE.screen === 'dead') return;
+
+  // ── Player physics ──
+  const p = STATE.player;
+  p.vy += CONFIG.gravity;
+  p.y += p.vy;
+
+  // Power-up timers
+  if (p.invincible) { p.invincibleTimer--; if (p.invincibleTimer <= 0) p.invincible = false; }
+  if (p.speedBoost) { p.speedTimer--; if (p.speedTimer <= 0) { p.speedBoost = false; STATE.scrollSpeed = CONFIG.baseScrollSpeed + STATE.distance * 0.0003; } }
+  if (p.multiplier > 1) { p.multiplierTimer--; if (p.multiplierTimer <= 0) p.multiplier = 1; }
+
+  // Out of bounds → die
+  if (p.y - p.h / 2 < 0 || p.y + p.h / 2 > canvasH - CONFIG.groundH) {
+    loseLife();
+    return;
+  }
+
+  // Scroll speed ramp
+  STATE.scrollSpeed = CONFIG.baseScrollSpeed + STATE.distance * 0.0003;
+  if (p.speedBoost) STATE.scrollSpeed *= 1.6;
+
+  STATE.distance += STATE.scrollSpeed;
+
+  // Zone transitions
+  const newZone = Math.min(2, Math.floor(STATE.distance / CONFIG.zoneLength));
+  if (newZone !== STATE.zone) {
+    STATE.zone = newZone;
+    const labels = ['', 'THE ATLANTIC — watch out.', '🏠 Almost home...'];
+    STATE.zoneLabel = { text: labels[newZone], alpha: 1.0 };
+  }
+  if (STATE.zoneLabel.alpha > 0) STATE.zoneLabel.alpha -= 0.008;
+
+  // Score: distance points
+  STATE.score += Math.floor(STATE.player.multiplier);
+
+  // Win condition
+  if (STATE.distance >= CONFIG.totalDistance) {
+    STATE.screen = 'win';
+    spawnConfetti();
+    return;
+  }
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvasW, canvasH);
+
+  if (STATE.screen === 'start') {
+    ctx.fillStyle = '#87CEEB';
+    ctx.fillRect(0, 0, canvasW, canvasH);
+    return;
+  }
+
   ctx.fillStyle = '#87CEEB';
   ctx.fillRect(0, 0, canvasW, canvasH);
+  drawPlane();
 }
 
 loop();
