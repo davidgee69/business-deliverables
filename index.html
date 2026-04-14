@@ -3,1491 +3,558 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>What's for Dinner?!</title>
+<title>Dinner Decider</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   :root {
-    --pink: #FF6B8A;
-    --orange: #FF8C42;
-    --yellow: #FFD166;
-    --green: #06D6A0;
-    --blue: #118AB2;
-    --purple: #9B5DE5;
-    --dark: #1a1a2e;
-    --david: #FF6B8A;
-    --holley: #9B5DE5;
-    --eirene: #06D6A0;
+    --bg: #0f0f0f;
+    --card: #1a1a1a;
+    --text: #f5f5f5;
+    --muted: #888;
+    --accent: #ff6b35;
+    --accent2: #ffd166;
+    --ring: #2a2a2a;
   }
 
   body {
-    font-family: 'Nunito', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    overflow-x: hidden;
-    padding: 10px 10px 24px;
-  }
-
-  h1 {
-    font-family: 'Fredoka One', cursive;
-    color: white;
-    font-size: 1.6rem;
-    text-align: center;
-    margin: 2px 0;
-    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
-    animation: bounceIn 0.8s ease;
-  }
-
-  .subtitle {
-    color: rgba(255,255,255,0.85);
-    font-size: 0.8rem;
-    text-align: center;
-    margin-bottom: 8px;
-    font-weight: 700;
-  }
-
-  /* ---- MAIN CARD ---- */
-  .card {
-    background: #fff;
-    border-radius: 24px;
-    padding: 16px 12px 20px;
-    width: 100%;
-    max-width: 480px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 6px;
-    background: linear-gradient(90deg, var(--pink), var(--orange), var(--yellow), var(--green), var(--blue), var(--purple));
-  }
-
-  /* ---- ROUND TRACKER ---- */
-  .round-tracker {
-    display: flex;
     justify-content: center;
-    gap: 6px;
-    margin-bottom: 10px;
-    padding-top: 6px;
-  }
-
-  .round-dot {
-    width: 28px; height: 28px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Fredoka One', cursive; font-size: 0.7rem;
-    border: 3px solid #e0e0e0; color: #ccc; background: #fafafa;
-    transition: all 0.3s ease;
-  }
-
-  .round-dot.active {
-    border-color: var(--purple); color: white;
-    background: var(--purple); transform: scale(1.15);
-    box-shadow: 0 3px 10px rgba(155,93,229,0.4);
-  }
-
-  .round-dot.passed {
-    border-color: var(--green); color: white;
-    background: var(--green);
-  }
-
-  .round-dot.failed {
-    border-color: #ddd; color: #bbb;
-    background: #f0f0f0;
-  }
-
-  /* ---- PLAYERS ROW ---- */
-  .players {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin-bottom: 10px;
-  }
-
-  .player {
-    background: #f8f9fa;
-    border-radius: 12px;
-    padding: 5px 8px;
-    flex: 1;
-    min-width: 0;
-    border: 3px solid transparent;
-    transition: all 0.3s ease;
-  }
-
-  .player.active {
-    border-color: var(--purple);
-    background: #f3eaff;
-    transform: scale(1.03);
-  }
-
-  .player.done {
-    border-color: var(--green);
-    background: #eafff5;
-  }
-
-  .player.waiting { opacity: 0.5; }
-
-  .player-name {
-    font-weight: 900;
-    font-size: 0.75rem;
-    color: var(--dark);
-    margin-bottom: 1px;
-    white-space: nowrap;
+    padding: 20px;
     overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .player-status {
-    font-size: 0.55rem;
-    color: #bbb;
-    font-weight: 700;
-    height: 14px;
-    line-height: 14px;
-  }
-
-  .player-status.rated { color: var(--green); }
-
-  .tokens { display: flex; gap: 3px; justify-content: center; margin-top: 2px; }
-
-  .token {
-    width: 16px; height: 16px; border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 8px; transition: all 0.3s ease;
-  }
-
-  .token.available { background: var(--pink); color: white; box-shadow: 0 2px 6px rgba(255,107,138,0.4); }
-  .token.used { background: #e0e0e0; color: #bbb; transform: scale(0.8); }
-  .token.burning { animation: burnToken 0.5s ease forwards; }
-
-  /* ---- PHASE LABEL ---- */
-  .phase-label {
-    font-family: 'Fredoka One', cursive;
-    font-size: 0.9rem;
-    color: var(--dark);
-    margin-bottom: 8px;
-    line-height: 1.3;
-  }
-
-  .phase-label .highlight { color: var(--purple); }
-
-  .phase-label .player-turn-name {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 8px;
-    color: white;
-    margin: 0 2px;
-  }
-
-  /* ---- FOOD GRID ---- */
-  .food-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-    max-height: 280px;
-    overflow-y: auto;
-    padding: 3px 2px;
-    margin-bottom: 8px;
-    scrollbar-width: thin;
-  }
-
-  .food-grid::-webkit-scrollbar { width: 4px; }
-  .food-grid::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
-
-  .food-tile {
-    background: linear-gradient(135deg, #f8f9ff, #f0f0ff);
-    border: 2px solid #e8e8f0;
-    border-radius: 12px;
-    padding: 8px 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
     user-select: none;
   }
 
-  .food-tile:hover { border-color: var(--purple); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(155,93,229,0.2); }
-  .food-tile:active { transform: scale(0.95); }
-
-  .food-tile.add-new {
-    border: 2px dashed var(--purple);
-    background: linear-gradient(135deg, #f8f0ff, #efe5ff);
-  }
-
-  .food-tile .tile-emoji { font-size: 1.5rem; line-height: 1; }
-  .food-tile .tile-name {
-    font-family: 'Fredoka One', cursive;
-    font-size: 0.6rem;
-    color: var(--dark);
-    line-height: 1.1;
-    text-align: center;
-    word-break: break-word;
-  }
-
-  /* ---- ADD NEW MODAL ---- */
-  .add-new-input-wrap {
-    display: none;
-    margin-bottom: 10px;
-    animation: popIn 0.3s ease;
-  }
-
-  .add-new-input-wrap.show { display: flex; gap: 6px; }
-
-  .add-new-input-wrap input {
-    flex: 1;
-    border: 3px solid var(--purple);
-    border-radius: 12px;
-    padding: 10px 12px;
-    font-family: 'Nunito', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 700;
-    outline: none;
-  }
-
-  .add-new-input-wrap button {
-    background: var(--purple);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    padding: 10px 16px;
-    font-family: 'Fredoka One', cursive;
-    font-size: 0.9rem;
-    cursor: pointer;
-  }
-
-  /* ---- PROPOSAL SCREEN ---- */
-  .proposal-screen { display: none; padding: 6px 0; }
-  .proposal-screen.show { display: block; animation: popIn 0.4s ease; }
-
-  .proposal-card {
-    background: linear-gradient(135deg, #f8f0ff, #efe5ff);
-    border: 3px solid var(--purple);
-    border-radius: 18px;
-    padding: 16px 12px;
-    margin-bottom: 12px;
-  }
-
-  .proposal-emoji { font-size: 3rem; margin-bottom: 4px; }
-  .proposal-name {
-    font-family: 'Fredoka One', cursive;
-    font-size: 1.4rem;
-    color: var(--dark);
-    line-height: 1.2;
-  }
-  .proposal-meta {
-    font-size: 0.78rem;
-    color: #999;
-    font-weight: 700;
-    margin-top: 4px;
-  }
-
-  /* ---- RATING PHASE ---- */
-  .rate-turn-label {
-    font-family: 'Fredoka One', cursive;
-    font-size: 1rem;
-    color: var(--dark);
-    margin-bottom: 10px;
-  }
-
-  .rate-turn-label .rater-name {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 8px;
-    color: white;
-  }
-
-  .rating-buttons {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 5px;
-    margin-bottom: 10px;
-  }
-
-  .rating-btn {
-    border: 3px solid #e0e0e0;
-    border-radius: 12px;
-    background: white;
-    padding: 8px 2px;
-    font-family: 'Fredoka One', cursive;
-    font-size: 1rem;
-    color: var(--dark);
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .rating-btn:hover { border-color: var(--purple); transform: scale(1.05); }
-  .rating-btn:active { transform: scale(0.95); }
-
-  .rating-btn.selected {
-    border-color: var(--orange);
-    background: linear-gradient(135deg, var(--orange), var(--pink));
-    color: white;
-    transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(255,140,66,0.4);
-  }
-
-  .rating-btn.good { border-color: var(--green); }
-  .rating-btn.meh { border-color: var(--yellow); }
-
-  .rating-fire { font-size: 0.5rem; display: block; margin-top: 1px; }
-
-  .btn-rate-lock {
-    background: linear-gradient(135deg, var(--green), #00b894);
-    color: white;
-    box-shadow: 0 4px 15px rgba(6,214,160,0.35);
+  .container {
     width: 100%;
-    font-size: 1rem;
-    padding: 12px;
-    border-radius: 14px;
-    border: none;
-    font-family: 'Fredoka One', cursive;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
   }
 
-  .btn-rate-lock:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(6,214,160,0.55); }
-  .btn-rate-lock:active { transform: scale(0.96); }
-  .btn-rate-lock:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-  /* ---- PASS PHONE SCREEN ---- */
-  .pass-phone { display: none; text-align: center; padding: 24px 10px; }
-  .pass-phone.show { display: block; animation: popIn 0.4s ease; }
-
-  .pass-phone-emoji { font-size: 3rem; margin-bottom: 8px; animation: wiggle 1.5s infinite; }
-
-  .pass-phone-text {
-    font-family: 'Fredoka One', cursive;
-    font-size: 1.2rem;
-    color: var(--dark);
-    margin-bottom: 4px;
-  }
-
-  .pass-phone-sub {
-    font-size: 0.82rem;
-    color: #999;
-    font-weight: 700;
-    margin-bottom: 16px;
-  }
-
-  .btn-ready {
-    background: linear-gradient(135deg, var(--purple), #7c3aed);
-    color: white;
-    box-shadow: 0 4px 15px rgba(155,93,229,0.4);
-    width: 100%;
-    font-size: 1rem;
-    padding: 13px;
-    border-radius: 16px;
-    border: none;
-    font-family: 'Fredoka One', cursive;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .btn-ready:hover { transform: translateY(-2px); }
-  .btn-ready:active { transform: scale(0.96); }
-
-  /* ---- RESULTS SCREEN (after all rate) ---- */
-  .results-screen { display: none; padding: 6px 0; }
-  .results-screen.show { display: block; animation: popIn 0.4s ease; }
-
-  .results-card {
-    border-radius: 18px;
-    padding: 16px 12px;
-    margin-bottom: 12px;
-    border: 3px solid transparent;
-  }
-
-  .results-card.success {
-    background: linear-gradient(135deg, #eafff5, #d4f7e8);
-    border-color: var(--green);
-  }
-
-  .results-card.fail {
-    background: linear-gradient(135deg, #fff5f5, #ffe0e0);
-    border-color: var(--pink);
-  }
-
-  .results-verdict {
-    font-family: 'Fredoka One', cursive;
+  h1 {
     font-size: 1.1rem;
-    margin-bottom: 10px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--muted);
+    text-transform: uppercase;
   }
 
-  .results-verdict.pass { color: var(--green); }
-  .results-verdict.nopass { color: var(--pink); }
-
-  .results-ratings {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    margin-bottom: 8px;
-  }
-
-  .result-player-rating {
-    text-align: center;
-  }
-
-  .result-player-rating .rp-name {
-    font-weight: 900;
-    font-size: 0.7rem;
-    color: #999;
-    margin-bottom: 2px;
-  }
-
-  .result-player-rating .rp-score {
-    font-family: 'Fredoka One', cursive;
-    font-size: 1.4rem;
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    color: white;
-    margin: 0 auto;
-  }
-
-  .rp-score.high { background: var(--green); }
-  .rp-score.mid { background: var(--yellow); color: var(--dark); }
-  .rp-score.low { background: var(--pink); }
-
-  .results-next-btn {
-    background: linear-gradient(135deg, var(--purple), #7c3aed);
-    color: white;
-    box-shadow: 0 4px 15px rgba(155,93,229,0.4);
-    width: 100%;
-    font-size: 1rem;
-    padding: 12px;
-    border-radius: 14px;
-    border: none;
-    font-family: 'Fredoka One', cursive;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    margin-top: 6px;
-  }
-
-  .results-next-btn:hover { transform: translateY(-2px); }
-  .results-next-btn:active { transform: scale(0.96); }
-
-  /* ---- WINNER SCREEN ---- */
-  .winner-screen { display: none; text-align: center; padding: 10px 0; }
-
-  .winner-screen.show {
-    display: block;
-    animation: popIn 0.6s cubic-bezier(0.68,-0.55,0.27,1.55);
-  }
-
-  .winner-emoji { font-size: 4rem; margin-bottom: 10px; animation: wiggle 1s infinite; }
-
-  .winner-text {
-    font-family: 'Fredoka One', cursive;
-    font-size: 1.6rem;
-    color: var(--dark);
-    margin-bottom: 6px;
-    line-height: 1.3;
-  }
-
-  .winner-sub {
-    font-size: 0.85rem;
-    color: var(--purple);
-    font-weight: 900;
-    margin-bottom: 4px;
-  }
-
-  .winner-rule {
-    font-size: 0.95rem;
-    color: var(--pink);
-    font-weight: 900;
-    margin: 10px 0 16px;
-  }
-
-  .btn-accept {
-    background: linear-gradient(135deg, var(--green), #00b894);
-    color: white;
-    box-shadow: 0 4px 15px rgba(6,214,160,0.35);
-    width: 100%;
-    font-size: 1rem;
-    padding: 13px;
-    border-radius: 16px;
-    border: none;
-    font-family: 'Fredoka One', cursive;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .btn-accept:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(6,214,160,0.55); }
-  .btn-accept:active { transform: scale(0.96); }
-
-  /* ---- BOTTOM BUTTONS ---- */
-  .bottom-buttons {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-    width: 100%;
-    max-width: 480px;
-  }
-
-  .btn-secondary {
-    flex: 1;
-    background: rgba(255,255,255,0.15);
-    border: 2px solid rgba(255,255,255,0.3);
-    border-radius: 14px;
-    padding: 8px 4px;
-    color: white;
-    font-family: 'Nunito', sans-serif;
-    font-weight: 900;
-    font-size: 0.72rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    backdrop-filter: blur(4px);
-  }
-
-  .btn-secondary:hover { background: rgba(255,255,255,0.25); }
-
-  /* ---- MODALS ---- */
-  .modal-overlay {
-    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.6); z-index: 100;
-    align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px);
-  }
-  .modal-overlay.show { display: flex; }
-
-  .modal {
-    background: white; border-radius: 20px; padding: 22px; width: 100%;
-    max-width: 420px; max-height: 80vh; overflow-y: auto; animation: popIn 0.3s ease;
-  }
-
-  .modal h2 { font-family: 'Fredoka One', cursive; color: var(--dark); margin-bottom: 6px; font-size: 1.3rem; }
-  .modal p { color: #888; font-size: 0.82rem; margin-bottom: 14px; }
-
-  .modal textarea {
-    width: 100%; min-height: 220px; border: 2px solid #e0e0e0; border-radius: 12px; padding: 12px;
-    font-family: 'Nunito', sans-serif; font-size: 0.9rem; resize: vertical; outline: none;
-    transition: border-color 0.2s; line-height: 1.6;
-  }
-  .modal textarea:focus { border-color: var(--purple); }
-
-  .modal-buttons { display: flex; gap: 10px; margin-top: 12px; }
-  .modal-buttons button {
-    flex: 1; padding: 11px; border-radius: 12px; font-family: 'Fredoka One', cursive;
-    font-size: 0.95rem; cursor: pointer; border: none;
-  }
-
-  .btn-save { background: linear-gradient(135deg, var(--purple), #7c3aed); color: white; }
-  .btn-cancel { background: #f0f0f0; color: #666; }
-
-  .names-inputs { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
-  .name-input-group label { font-weight: 900; font-size: 0.82rem; color: var(--dark); display: block; margin-bottom: 3px; }
-  .name-input-group input {
-    width: 100%; border: 2px solid #e0e0e0; border-radius: 10px; padding: 9px 12px;
-    font-family: 'Nunito', sans-serif; font-size: 0.95rem; outline: none; transition: border-color 0.2s;
-  }
-  .name-input-group input:focus { border-color: var(--purple); }
-
-  #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
-
-  .sound-toggle {
-    position: fixed; top: 10px; right: 10px; background: rgba(255,255,255,0.2);
-    border: none; border-radius: 50%; width: 34px; height: 34px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1rem; cursor: pointer; z-index: 10; backdrop-filter: blur(4px);
-  }
-
-  /* ---- HISTORY BAR ---- */
-  .history-bar {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-bottom: 6px;
-    min-height: 0;
-  }
-
-  .history-chip {
-    font-size: 0.55rem;
-    font-weight: 900;
-    padding: 2px 8px;
-    border-radius: 8px;
-    color: white;
-  }
-
-  .history-chip.pass { background: var(--green); }
-  .history-chip.fail { background: #ddd; color: #999; text-decoration: line-through; }
-
-  /* ---- ANIMATIONS ---- */
-  @keyframes bounceIn { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
-  @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
-  @keyframes burnToken { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5) rotate(20deg); opacity: 0.5; background: #ff4444; } 100% { transform: scale(0.8); opacity: 1; } }
-  @keyframes wiggle { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-  @keyframes celebrate { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-
-  .proposal-card.shake {
-    animation: vetoShake 0.5s ease;
-  }
-
-  @keyframes vetoShake {
-    0%, 100% { transform: translateX(0); }
-    15% { transform: translateX(-8px) rotate(-2deg); }
-    30% { transform: translateX(6px) rotate(2deg); }
-    45% { transform: translateX(-4px) rotate(-1deg); }
-    60% { transform: translateX(2px) rotate(0.5deg); }
+  /* ---- WHEEL ---- */
+  .wheel-wrap {
+    position: relative;
+    width: 320px;
+    height: 320px;
   }
 
   @media (max-width: 380px) {
-    h1 { font-size: 1.3rem; }
-    .food-grid { grid-template-columns: repeat(2, 1fr); }
-    .food-tile .tile-name { font-size: 0.55rem; }
-    .player { padding: 4px 5px; }
-    .player-name { font-size: 0.68rem; }
-    .rating-buttons { gap: 4px; }
-    .rating-btn { font-size: 0.9rem; padding: 6px 2px; }
+    .wheel-wrap { width: 280px; height: 280px; }
   }
+
+  .wheel-wrap canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    box-shadow: 0 0 0 6px var(--ring), 0 0 40px rgba(255,107,53,0.15);
+    transition: box-shadow 0.3s;
+  }
+
+  .wheel-wrap.spinning canvas {
+    box-shadow: 0 0 0 6px var(--accent), 0 0 60px rgba(255,107,53,0.3);
+  }
+
+  /* pointer */
+  .pointer {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 28px solid var(--accent);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    z-index: 2;
+    transition: transform 0.1s;
+  }
+
+  .pointer.tick {
+    transform: translateX(-50%) scaleY(0.85);
+  }
+
+  /* center dot */
+  .center-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+    background: var(--bg);
+    border: 4px solid var(--ring);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: var(--muted);
+    z-index: 2;
+  }
+
+  /* ---- RESULT ---- */
+  .result {
+    text-align: center;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .result-text {
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .result-text.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .result-sub {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 4px;
+    opacity: 0;
+    transition: opacity 0.4s 0.15s;
+  }
+
+  .result-sub.show { opacity: 1; }
+
+  /* ---- SPIN BUTTON ---- */
+  .spin-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 16px;
+    padding: 16px 48px;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .spin-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,107,53,0.35); }
+  .spin-btn:active { transform: scale(0.96); }
+  .spin-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* ---- EDIT LINK ---- */
+  .edit-link {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: color 0.2s;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .edit-link:hover { color: var(--text); }
+
+  /* ---- MODAL ---- */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--card);
+    border: 1px solid #333;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: fadeUp 0.25s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .modal h2 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+
+  .modal p {
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .modal textarea {
+    width: 100%;
+    min-height: 280px;
+    background: var(--bg);
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 14px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    line-height: 1.8;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .modal textarea:focus { border-color: var(--accent); }
+
+  .modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .modal-buttons button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+
+  .btn-save { background: var(--accent); color: white; }
+  .btn-save:hover { opacity: 0.9; }
+  .btn-cancel { background: #333; color: var(--muted); }
+  .btn-cancel:hover { background: #444; }
 </style>
 </head>
 <body>
 
-<button class="sound-toggle" onclick="toggleSound()" id="soundBtn" title="Toggle Sound">🔊</button>
+<div class="container">
+  <h1>Dinner Decider</h1>
 
-<h1>🍕 What's for Dinner?!</h1>
-<p class="subtitle">Find something everyone loves in 5 rounds!</p>
-
-<div class="card">
-  <!-- Round Tracker -->
-  <div class="round-tracker" id="roundTracker"></div>
-
-  <!-- Players Row -->
-  <div class="players" id="playersContainer"></div>
-
-  <!-- History of past rounds -->
-  <div class="history-bar" id="historyBar"></div>
-
-  <!-- ===== PICK SCREEN (proposer picks a restaurant) ===== -->
-  <div id="pickScreen">
-    <div class="phase-label" id="pickPhaseLabel"></div>
-    <div class="add-new-input-wrap" id="addNewWrap">
-      <input type="text" id="addNewInput" placeholder="Type a restaurant name..." maxlength="40">
-      <button onclick="confirmAddNew()">Go!</button>
-    </div>
-    <div class="food-grid" id="foodGrid"></div>
+  <div class="wheel-wrap" id="wheelWrap">
+    <div class="pointer" id="pointer"></div>
+    <canvas id="wheel" width="640" height="640"></canvas>
+    <div class="center-dot" id="centerDot">?</div>
   </div>
 
-  <!-- ===== PROPOSAL + RATING SCREEN ===== -->
-  <div class="proposal-screen" id="proposalScreen">
-    <div class="proposal-card" id="proposalCard">
-      <div class="proposal-emoji" id="proposalEmoji"></div>
-      <div class="proposal-name" id="proposalName"></div>
-      <div class="proposal-meta" id="proposalMeta"></div>
-    </div>
-
-    <div class="rate-turn-label" id="rateTurnLabel"></div>
-    <div class="rating-buttons" id="ratingButtons"></div>
-    <button class="btn-rate-lock" id="rateLockBtn" onclick="lockRating()" disabled>🔒 LOCK IT IN</button>
+  <div class="result">
+    <div class="result-text" id="resultText"></div>
+    <div class="result-sub" id="resultSub"></div>
   </div>
 
-  <!-- ===== PASS THE PHONE ===== -->
-  <div class="pass-phone" id="passPhoneScreen">
-    <div class="pass-phone-emoji" id="passEmoji">📱</div>
-    <div class="pass-phone-text" id="passPhoneText"></div>
-    <div class="pass-phone-sub" id="passPhoneSub">No peeking! 👀</div>
-    <button class="btn-ready" onclick="continueAfterPass()" id="passReadyBtn"></button>
-  </div>
+  <button class="spin-btn" id="spinBtn" onclick="spin()">Spin</button>
 
-  <!-- ===== RESULTS SCREEN ===== -->
-  <div class="results-screen" id="resultsScreen">
-    <div class="proposal-card" id="resultsProposalCard" style="margin-bottom: 10px;">
-      <div class="proposal-emoji" id="resultsEmoji"></div>
-      <div class="proposal-name" id="resultsName"></div>
-    </div>
-    <div class="results-card" id="resultsCard">
-      <div class="results-verdict" id="resultsVerdict"></div>
-      <div class="results-ratings" id="resultsRatings"></div>
-    </div>
-    <button class="results-next-btn" id="resultsNextBtn" onclick="handleResultsNext()"></button>
-  </div>
-
-  <!-- ===== WINNER SCREEN ===== -->
-  <div class="winner-screen" id="winnerScreen">
-    <div class="winner-emoji">🎉🍽️🎉</div>
-    <div class="winner-text" id="winnerText"></div>
-    <div class="winner-sub" id="winnerSub"></div>
-    <div class="winner-rule">🚫 No more complaining allowed! 🚫</div>
-    <button class="btn-accept" onclick="resetGame()">🔄 PLAY AGAIN</button>
-  </div>
+  <button class="edit-link" onclick="openEdit()">Edit options</button>
 </div>
 
-<div class="bottom-buttons">
-  <button class="btn-secondary" onclick="resetGame()">🔄 Reset</button>
-  <button class="btn-secondary" onclick="openEditModal()">📝 Menu</button>
-  <button class="btn-secondary" onclick="openNamesModal()">👨‍👩‍👧 Names</button>
-</div>
-
-<!-- Edit food list modal -->
 <div class="modal-overlay" id="editModal">
   <div class="modal">
-    <h2>📝 Edit the Menu</h2>
-    <p>One option per line. Emoji at the start = extra fun. You can also add on-the-fly during the game!</p>
-    <textarea id="foodListEditor"></textarea>
+    <h2>Edit Options</h2>
+    <p>One per line. Add an emoji at the start if you want.</p>
+    <textarea id="editor"></textarea>
     <div class="modal-buttons">
-      <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
-      <button class="btn-save" onclick="saveEditModal()">Save</button>
+      <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
+      <button class="btn-save" onclick="saveEdit()">Save</button>
     </div>
   </div>
 </div>
-
-<!-- Edit names modal -->
-<div class="modal-overlay" id="namesModal">
-  <div class="modal">
-    <h2>👨‍👩‍👧 Player Names</h2>
-    <p>Who's playing tonight?</p>
-    <div class="names-inputs" id="namesInputs"></div>
-    <div class="modal-buttons">
-      <button class="btn-cancel" onclick="closeNamesModal()">Cancel</button>
-      <button class="btn-save" onclick="saveNames()">Save</button>
-    </div>
-  </div>
-</div>
-
-<canvas id="confetti-canvas"></canvas>
 
 <script>
-// ============================================================
-//  DEFAULTS
-// ============================================================
-const DEFAULT_FOODS = [
-  "🌮 Torchy's Tacos", "🍔 P. Terry's", "🍣 Uchi", "🍖 Franklin BBQ",
-  "🌮 Veracruz All Natural", "🍗 Gus's Fried Chicken", "🍜 Ramen Tatsu-Ya",
-  "🍕 Via 313", "🥡 Din Ho Chinese BBQ", "🧇 Kerbey Lane Cafe",
-  "🍔 Hopdoddy", "🌯 Freebirds", "🍝 Mandola's Italian", "🌮 Chuy's",
-  "🍗 Raising Cane's", "🍔 In-N-Out", "🥪 Thundercloud Subs",
-  "🍔 Shake Shack", "🌯 Chipotle", "🍗 Chick-fil-A",
-  "🍕 Pizza Night (homemade)", "🥞 Breakfast for Dinner",
-  "🍿 Movie Snack Dinner", "🥗 Big Salads", "🍛 Curry Night",
-  "🥘 Stir Fry at Home", "🍲 Soup & Bread", "🧆 Mediterranean",
-  "🥟 Dumplings", "🍱 Poke Bowls"
+const DEFAULT_OPTIONS = [
+  "Torchy's Tacos",
+  "P. Terry's",
+  "Uchi",
+  "Franklin BBQ",
+  "Veracruz All Natural",
+  "Gus's Fried Chicken",
+  "Ramen Tatsu-Ya",
+  "Via 313",
+  "Din Ho Chinese BBQ",
+  "Kerbey Lane",
+  "Hopdoddy",
+  "Freebirds",
+  "Chuy's",
+  "Raising Cane's",
+  "In-N-Out",
+  "Shake Shack",
+  "Chipotle",
+  "Chick-fil-A",
+  "Pizza (homemade)",
+  "Breakfast for Dinner",
+  "Stir Fry",
+  "Curry Night",
+  "Soup & Bread",
+  "Poke Bowls"
 ];
 
-const PLAYER_COLORS = ['var(--david)', 'var(--holley)', 'var(--eirene)'];
-const PLAYER_HEX = ['#FF6B8A', '#9B5DE5', '#06D6A0'];
-const MAX_ROUNDS = 5;
-const PASS_THRESHOLD = 7;
-
-// ============================================================
-//  STATE
-// ============================================================
-let foods = [];
-let players = [
-  { name: "David",  shortName: "David",  tokens: 3 },
-  { name: "Holley", shortName: "Holley", tokens: 3 },
-  { name: "Eirene", shortName: "Eirene", tokens: 3 }
+// Warm, distinct colors for wheel segments
+const COLORS = [
+  '#ff6b35', '#ffd166', '#06d6a0', '#118ab2',
+  '#9b5de5', '#ef476f', '#26547c', '#f77f00',
+  '#70c1b3', '#b2dbbf', '#ff8c42', '#3d5a80',
+  '#e07a5f', '#81b29a', '#f2cc8f', '#3a86ff'
 ];
 
-let round = 0;                // 0-indexed, max 4
-let proposerIndex = 0;        // who picks this round (rotates)
-let currentProposal = null;   // { foodText, emoji, name }
-let ratingPlayerIndex = 0;    // who's currently rating
-let roundRatings = [];        // [ {playerIndex, rating}, ... ] for current round
-let roundHistory = [];        // [ { foodText, emoji, name, ratings: [...], passed: bool }, ... ]
+let options = [];
+let spinning = false;
+let currentAngle = 0;
 
-let gameOver = false;
-let soundEnabled = true;
-
-// Sub-phases: 'pick', 'pass-to-rater', 'rate', 'pass-to-next-rater', 'results', 'done'
-let subPhase = 'pick';
-
-// ============================================================
-//  AUDIO
-// ============================================================
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-function playBuzz() {
-  if (!soundEnabled) return;
-  try {
-    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.3);
-  } catch(e) {}
-}
-
-function playCelebration() {
-  if (!soundEnabled) return;
-  try {
-    [523, 659, 784, 1047].forEach((freq, i) => {
-      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-      osc.connect(gain); gain.connect(audioCtx.destination);
-      osc.type = 'sine'; osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.18, audioCtx.currentTime + i * 0.15);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.15 + 0.4);
-      osc.start(audioCtx.currentTime + i * 0.15); osc.stop(audioCtx.currentTime + i * 0.15 + 0.4);
-    });
-  } catch(e) {}
-}
-
-function playPop() {
-  if (!soundEnabled) return;
-  try {
-    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.type = 'sine'; osc.frequency.value = 600;
-    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
-    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.12);
-  } catch(e) {}
-}
-
-function playDing() {
-  if (!soundEnabled) return;
-  try {
-    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.type = 'sine'; osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.3);
-  } catch(e) {}
-}
-
-function toggleSound() {
-  soundEnabled = !soundEnabled;
-  document.getElementById('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
-  if (soundEnabled && audioCtx.state === 'suspended') audioCtx.resume();
-}
-
-// ============================================================
-//  INIT
-// ============================================================
-function init() {
-  loadFoods();
-  loadNames();
-  buildPlayersRow();
-  renderRoundTracker();
-  renderTokens();
-  showPickScreen();
-}
-
-function loadFoods() {
-  const stored = localStorage.getItem('dinnerFoods');
+function loadOptions() {
+  const stored = localStorage.getItem('dinnerOptions');
   if (stored) {
     try {
-      foods = JSON.parse(stored);
-      if (!Array.isArray(foods) || foods.length === 0) foods = [...DEFAULT_FOODS];
-    } catch(e) { foods = [...DEFAULT_FOODS]; }
-  } else {
-    foods = [...DEFAULT_FOODS];
-  }
-}
-
-function loadNames() {
-  const stored = localStorage.getItem('dinnerPlayers3');
-  if (stored) {
-    try {
-      const p = JSON.parse(stored);
-      players.forEach((pl, i) => { if (p[i]) { pl.name = p[i].name; pl.shortName = p[i].shortName; } });
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length >= 2) { options = parsed; return; }
     } catch(e) {}
   }
+  options = [...DEFAULT_OPTIONS];
 }
 
-function saveFoods() { localStorage.setItem('dinnerFoods', JSON.stringify(foods)); }
+function saveOptions() {
+  localStorage.setItem('dinnerOptions', JSON.stringify(options));
+}
 
-function parseSuggestion(text) {
+function parseName(text) {
   const m = text.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)\s*/u);
-  if (m) return { emoji: m[0].trim(), name: text.slice(m[0].length) };
-  return { emoji: "🍽️", name: text };
+  return m ? text.slice(m[0].length) : text;
 }
 
-// ============================================================
-//  BUILD PLAYERS ROW (dynamic)
-// ============================================================
-function buildPlayersRow() {
-  const container = document.getElementById('playersContainer');
-  container.innerHTML = '';
-  players.forEach((p, i) => {
-    const div = document.createElement('div');
-    div.className = 'player';
-    div.id = `player${i}`;
-    div.innerHTML = `
-      <div class="player-name" id="player${i}Name">${p.name}</div>
-      <div class="player-status" id="player${i}Status">&nbsp;</div>
-      <div class="tokens" id="tokens${i}"></div>
-    `;
-    container.appendChild(div);
-  });
-  renderTokens();
+// ---- DRAW WHEEL ----
+function drawWheel() {
+  const canvas = document.getElementById('wheel');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const cx = w / 2, cy = h / 2, r = w / 2 - 4;
+  const n = options.length;
+  const arc = (2 * Math.PI) / n;
+
+  ctx.clearRect(0, 0, w, h);
+
+  for (let i = 0; i < n; i++) {
+    const startAngle = currentAngle + i * arc;
+    const endAngle = startAngle + arc;
+
+    // segment
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = COLORS[i % COLORS.length];
+    ctx.fill();
+
+    // thin divider
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, startAngle);
+    ctx.lineTo(cx + r * Math.cos(startAngle), cy + r * Math.sin(startAngle));
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // text
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(startAngle + arc / 2);
+
+    const name = parseName(options[i]);
+    const maxLen = n > 16 ? 10 : n > 10 ? 14 : 18;
+    const displayName = name.length > maxLen ? name.substring(0, maxLen - 1) + '...' : name;
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${n > 16 ? 14 : n > 10 ? 16 : 20}px Inter, sans-serif`;
+    ctx.shadowColor = 'rgba(0,0,0,0.4)';
+    ctx.shadowBlur = 3;
+    ctx.fillText(displayName, r - 16, 5);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
 }
 
-// ============================================================
-//  ROUND TRACKER
-// ============================================================
-function renderRoundTracker() {
-  const container = document.getElementById('roundTracker');
-  container.innerHTML = '';
-  for (let r = 0; r < MAX_ROUNDS; r++) {
-    const dot = document.createElement('div');
-    dot.className = 'round-dot';
-    if (r === round) dot.classList.add('active');
-    else if (r < round && roundHistory[r]) {
-      dot.classList.add(roundHistory[r].passed ? 'passed' : 'failed');
+// ---- SPIN ----
+function spin() {
+  if (spinning) return;
+  spinning = true;
+
+  const btn = document.getElementById('spinBtn');
+  btn.disabled = true;
+
+  // Hide previous result
+  document.getElementById('resultText').classList.remove('show');
+  document.getElementById('resultSub').classList.remove('show');
+  document.getElementById('wheelWrap').classList.add('spinning');
+  document.getElementById('centerDot').textContent = '?';
+
+  const n = options.length;
+  const arc = (2 * Math.PI) / n;
+
+  // Random target: 4-7 full rotations + random segment
+  const extraRotations = (4 + Math.random() * 3) * 2 * Math.PI;
+  const targetSegment = Math.floor(Math.random() * n);
+  // We want the pointer (top, -PI/2) to land in the middle of targetSegment
+  // The segment i starts at currentAngle + i * arc
+  // For pointer at -PI/2 to be in segment i: currentAngle + i*arc < -PI/2 < currentAngle + (i+1)*arc
+  // So we need finalAngle = -PI/2 - (targetSegment * arc + arc/2) + small random offset within segment
+  const offsetInSegment = (Math.random() - 0.5) * arc * 0.7; // stay away from edges
+  const targetAngle = -(Math.PI / 2) - (targetSegment * arc + arc / 2) + offsetInSegment;
+  const totalSpin = extraRotations + (targetAngle - currentAngle) % (2 * Math.PI);
+
+  // Normalize
+  const finalAngle = currentAngle + totalSpin;
+
+  const startAngle = currentAngle;
+  const duration = 4000 + Math.random() * 1000;
+  const startTime = performance.now();
+  let lastSegment = -1;
+
+  function easeOutQuart(t) {
+    return 1 - Math.pow(1 - t, 4);
+  }
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / duration, 1);
+    const easedT = easeOutQuart(t);
+
+    currentAngle = startAngle + (finalAngle - startAngle) * easedT;
+    drawWheel();
+
+    // Tick effect — detect segment change under pointer
+    const pointerAngle = -Math.PI / 2;
+    let normalizedPointer = (pointerAngle - currentAngle) % (2 * Math.PI);
+    if (normalizedPointer < 0) normalizedPointer += 2 * Math.PI;
+    const currentSegment = Math.floor(normalizedPointer / arc) % n;
+
+    if (currentSegment !== lastSegment && t < 0.95) {
+      lastSegment = currentSegment;
+      const ptr = document.getElementById('pointer');
+      ptr.classList.add('tick');
+      setTimeout(() => ptr.classList.remove('tick'), 60);
+      tickSound();
     }
-    dot.textContent = r + 1;
-    container.appendChild(dot);
-  }
-}
 
-// ============================================================
-//  HISTORY BAR
-// ============================================================
-function renderHistory() {
-  const bar = document.getElementById('historyBar');
-  bar.innerHTML = '';
-  roundHistory.forEach(h => {
-    const chip = document.createElement('span');
-    chip.className = 'history-chip ' + (h.passed ? 'pass' : 'fail');
-    chip.textContent = h.name;
-    bar.appendChild(chip);
-  });
-}
-
-// ============================================================
-//  TOKENS
-// ============================================================
-function renderTokens() {
-  players.forEach((p, i) => {
-    const c = document.getElementById(`tokens${i}`);
-    if (!c) return;
-    c.innerHTML = '';
-    for (let t = 0; t < 3; t++) {
-      const s = document.createElement('span');
-      s.className = `token ${t < p.tokens ? 'available' : 'used'}`;
-      s.textContent = t < p.tokens ? '✕' : '·';
-      c.appendChild(s);
-    }
-  });
-}
-
-// ============================================================
-//  HIDE ALL SCREENS
-// ============================================================
-function hideAll() {
-  document.getElementById('pickScreen').style.display = 'none';
-  document.getElementById('proposalScreen').classList.remove('show');
-  document.getElementById('passPhoneScreen').classList.remove('show');
-  document.getElementById('resultsScreen').classList.remove('show');
-  document.getElementById('winnerScreen').classList.remove('show');
-  document.getElementById('addNewWrap').classList.remove('show');
-}
-
-// ============================================================
-//  PICK SCREEN — Proposer picks a restaurant
-// ============================================================
-function showPickScreen() {
-  hideAll();
-  subPhase = 'pick';
-  document.getElementById('pickScreen').style.display = 'block';
-
-  const p = players[proposerIndex];
-  document.getElementById('pickPhaseLabel').innerHTML =
-    `Round ${round + 1}: <span class="player-turn-name" style="background: ${PLAYER_HEX[proposerIndex]};">${p.name}</span>, propose dinner!`;
-
-  // Update player highlights
-  players.forEach((_, i) => {
-    const el = document.getElementById(`player${i}`);
-    el.className = 'player' + (i === proposerIndex ? ' active' : ' waiting');
-    document.getElementById(`player${i}Status`).textContent = i === proposerIndex ? '🎯 Proposing' : '';
-    document.getElementById(`player${i}Status`).className = 'player-status';
-  });
-
-  buildGrid();
-  renderRoundTracker();
-  renderHistory();
-}
-
-function buildGrid() {
-  const grid = document.getElementById('foodGrid');
-  grid.innerHTML = '';
-
-  // Add the "+ Add New" tile first
-  const addTile = document.createElement('div');
-  addTile.className = 'food-tile add-new';
-  addTile.innerHTML = `<div class="tile-emoji">➕</div><div class="tile-name">Add New</div>`;
-  addTile.onclick = showAddNew;
-  grid.appendChild(addTile);
-
-  foods.forEach((food, i) => {
-    const parsed = parseSuggestion(food);
-    const tile = document.createElement('div');
-    tile.className = 'food-tile';
-    tile.innerHTML = `<div class="tile-emoji">${parsed.emoji}</div><div class="tile-name">${parsed.name}</div>`;
-    tile.onclick = () => proposeFood(food);
-    grid.appendChild(tile);
-  });
-}
-
-// ============================================================
-//  ADD NEW RESTAURANT
-// ============================================================
-function showAddNew() {
-  playPop();
-  const wrap = document.getElementById('addNewWrap');
-  wrap.classList.add('show');
-  document.getElementById('addNewInput').value = '';
-  document.getElementById('addNewInput').focus();
-}
-
-function confirmAddNew() {
-  const input = document.getElementById('addNewInput');
-  const val = input.value.trim();
-  if (!val) return;
-
-  // Add to foods list and save
-  const newFood = "🍽️ " + val;
-  foods.unshift(newFood);
-  saveFoods();
-
-  // Propose it immediately
-  proposeFood(newFood);
-}
-
-// Also allow Enter key
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && document.getElementById('addNewWrap').classList.contains('show')) {
-    confirmAddNew();
-  }
-});
-
-// ============================================================
-//  PROPOSE A FOOD
-// ============================================================
-function proposeFood(foodText) {
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  playPop();
-
-  const parsed = parseSuggestion(foodText);
-  currentProposal = { foodText, emoji: parsed.emoji, name: parsed.name };
-  roundRatings = [];
-
-  // Proposer automatically rates 10 (they picked it, they want it)
-  // Actually let them rate too for fairness. Start with first player.
-  ratingPlayerIndex = 0;
-
-  // Show pass-to-first-rater screen
-  showPassToRater(ratingPlayerIndex, true);
-}
-
-// ============================================================
-//  PASS TO RATER
-// ============================================================
-function showPassToRater(playerIdx, isFirst) {
-  hideAll();
-  subPhase = 'pass-to-rater';
-
-  const screen = document.getElementById('passPhoneScreen');
-  screen.classList.add('show');
-
-  const p = players[playerIdx];
-  if (isFirst && playerIdx === proposerIndex) {
-    // Proposer rates first — no need to pass
-    document.getElementById('passEmoji').textContent = '🎯';
-    document.getElementById('passPhoneText').textContent = `${p.name}, rate your own pick!`;
-    document.getElementById('passPhoneSub').textContent = `How badly do you want this?`;
-  } else {
-    document.getElementById('passEmoji').textContent = '📱';
-    document.getElementById('passPhoneText').textContent = `Pass to ${p.name}!`;
-    document.getElementById('passPhoneSub').textContent = `No peeking at others' ratings! 👀`;
-  }
-
-  document.getElementById('passReadyBtn').textContent = `I'm ${p.name} — Ready! 🤚`;
-  document.getElementById('passReadyBtn').onclick = () => showRatingScreen(playerIdx);
-
-  // Update player highlights
-  players.forEach((_, i) => {
-    const el = document.getElementById(`player${i}`);
-    const rated = roundRatings.find(r => r.playerIndex === i);
-    el.className = 'player' + (rated ? ' done' : ' waiting');
-    const status = document.getElementById(`player${i}Status`);
-    status.textContent = rated ? '✅ Rated' : '';
-    status.className = 'player-status' + (rated ? ' rated' : '');
-  });
-}
-
-// ============================================================
-//  RATING SCREEN
-// ============================================================
-function showRatingScreen(playerIdx) {
-  hideAll();
-  subPhase = 'rate';
-  ratingPlayerIndex = playerIdx;
-
-  const screen = document.getElementById('proposalScreen');
-  screen.classList.add('show');
-
-  // Show the proposal
-  document.getElementById('proposalEmoji').textContent = currentProposal.emoji;
-  document.getElementById('proposalName').textContent = currentProposal.name;
-
-  const proposerName = players[proposerIndex].name;
-  document.getElementById('proposalMeta').textContent =
-    playerIdx === proposerIndex
-      ? `Your proposal!`
-      : `${proposerName} proposed this`;
-
-  // Rating label
-  const p = players[playerIdx];
-  document.getElementById('rateTurnLabel').innerHTML =
-    `<span class="rater-name" style="background: ${PLAYER_HEX[playerIdx]};">${p.name}</span>, how do you feel?`;
-
-  // Build rating buttons
-  buildRatingButtons();
-
-  // Update player highlights
-  players.forEach((_, i) => {
-    const el = document.getElementById(`player${i}`);
-    const rated = roundRatings.find(r => r.playerIndex === i);
-    if (i === playerIdx) {
-      el.className = 'player active';
-      document.getElementById(`player${i}Status`).textContent = '🎯 Rating...';
-      document.getElementById(`player${i}Status`).className = 'player-status';
-    } else if (rated) {
-      el.className = 'player done';
-      document.getElementById(`player${i}Status`).textContent = '✅ Rated';
-      document.getElementById(`player${i}Status`).className = 'player-status rated';
+    if (t < 1) {
+      requestAnimationFrame(animate);
     } else {
-      el.className = 'player waiting';
-      document.getElementById(`player${i}Status`).textContent = '';
-      document.getElementById(`player${i}Status`).className = 'player-status';
-    }
-  });
-}
+      // Done
+      spinning = false;
+      btn.disabled = false;
+      document.getElementById('wheelWrap').classList.remove('spinning');
 
-let selectedRating = 0;
+      // Figure out which segment the pointer landed on
+      let angle = (pointerAngle - currentAngle) % (2 * Math.PI);
+      if (angle < 0) angle += 2 * Math.PI;
+      const winner = Math.floor(angle / arc) % n;
+      const winnerName = parseName(options[winner]);
 
-function buildRatingButtons() {
-  selectedRating = 0;
-  const container = document.getElementById('ratingButtons');
-  container.innerHTML = '';
-  document.getElementById('rateLockBtn').disabled = true;
+      document.getElementById('centerDot').textContent = '!';
+      document.getElementById('resultText').textContent = winnerName;
+      document.getElementById('resultText').classList.add('show');
+      document.getElementById('resultSub').textContent = "That's dinner.";
+      document.getElementById('resultSub').classList.add('show');
 
-  const labels = ['😐','😐','😕','🤷','😏','😊','😋','🤤','🔥','💀'];
-  for (let r = 1; r <= 10; r++) {
-    const btn = document.createElement('button');
-    btn.className = 'rating-btn';
-    if (r >= 7) btn.classList.add('good');
-    else if (r >= 5) btn.classList.add('meh');
-    btn.innerHTML = `${r}<span class="rating-fire">${labels[r-1]}</span>`;
-    btn.onclick = () => {
-      playPop();
-      selectedRating = r;
-      document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      document.getElementById('rateLockBtn').disabled = false;
-    };
-    container.appendChild(btn);
-  }
-}
-
-function lockRating() {
-  if (selectedRating <= 0) return;
-  playPop();
-
-  // If rating < 7, it costs a veto token (if they have any)
-  const p = players[ratingPlayerIndex];
-  let effectiveRating = selectedRating;
-
-  if (selectedRating < PASS_THRESHOLD && p.tokens > 0) {
-    p.tokens--;
-    renderTokens();
-    // Burn visual
-    const tokenEls = document.querySelectorAll(`#tokens${ratingPlayerIndex} .token`);
-    if (tokenEls[p.tokens]) tokenEls[p.tokens].classList.add('burning');
-  } else if (selectedRating < PASS_THRESHOLD && p.tokens <= 0) {
-    // No tokens left — their effective rating becomes 7 (forced to accept)
-    effectiveRating = PASS_THRESHOLD;
-  }
-
-  roundRatings.push({ playerIndex: ratingPlayerIndex, rating: selectedRating, effectiveRating });
-
-  // Find next unrated player
-  const nextUnrated = getNextUnratedPlayer();
-
-  if (nextUnrated !== -1) {
-    // Pass to next rater
-    showPassToRater(nextUnrated, false);
-  } else {
-    // All rated — show results
-    showResults();
-  }
-}
-
-function getNextUnratedPlayer() {
-  // Rating order: start from proposer, go around
-  for (let offset = 0; offset < players.length; offset++) {
-    const idx = (proposerIndex + offset) % players.length;
-    if (!roundRatings.find(r => r.playerIndex === idx)) return idx;
-  }
-  return -1;
-}
-
-// ============================================================
-//  RESULTS SCREEN
-// ============================================================
-function showResults() {
-  hideAll();
-  subPhase = 'results';
-
-  const screen = document.getElementById('resultsScreen');
-  screen.classList.add('show');
-
-  document.getElementById('resultsEmoji').textContent = currentProposal.emoji;
-  document.getElementById('resultsName').textContent = currentProposal.name;
-
-  // Check if all effective ratings >= 7
-  const allPassed = roundRatings.every(r => r.effectiveRating >= PASS_THRESHOLD);
-  const avgRating = (roundRatings.reduce((s, r) => s + r.rating, 0) / roundRatings.length).toFixed(1);
-
-  // Save to history
-  roundHistory.push({
-    foodText: currentProposal.foodText,
-    emoji: currentProposal.emoji,
-    name: currentProposal.name,
-    ratings: [...roundRatings],
-    avgRating: parseFloat(avgRating),
-    passed: allPassed
-  });
-
-  // Build results display
-  const card = document.getElementById('resultsCard');
-  const verdict = document.getElementById('resultsVerdict');
-  const ratingsDiv = document.getElementById('resultsRatings');
-
-  if (allPassed) {
-    card.className = 'results-card success';
-    verdict.className = 'results-verdict pass';
-    verdict.textContent = `✅ EVERYONE'S IN! (avg ${avgRating})`;
-    playCelebration();
-  } else {
-    card.className = 'results-card fail';
-    verdict.className = 'results-verdict nopass';
-    const lowRaters = roundRatings.filter(r => r.rating < PASS_THRESHOLD)
-      .map(r => players[r.playerIndex].name).join(', ');
-    verdict.textContent = `❌ Not quite... (${lowRaters} not feeling it)`;
-    playBuzz();
-  }
-
-  // Show individual ratings
-  ratingsDiv.innerHTML = '';
-  roundRatings.forEach(r => {
-    const div = document.createElement('div');
-    div.className = 'result-player-rating';
-    const scoreClass = r.rating >= 7 ? 'high' : r.rating >= 5 ? 'mid' : 'low';
-    const forcedNote = (r.effectiveRating !== r.rating) ? '<br><span style="font-size:0.5rem;color:#999;">forced 7</span>' : '';
-    div.innerHTML = `
-      <div class="rp-name">${players[r.playerIndex].name}</div>
-      <div class="rp-score ${scoreClass}">${r.rating}</div>
-      ${forcedNote}
-    `;
-    ratingsDiv.appendChild(div);
-  });
-
-  // Update player states
-  players.forEach((_, i) => {
-    const el = document.getElementById(`player${i}`);
-    el.className = 'player done';
-    const r = roundRatings.find(rr => rr.playerIndex === i);
-    document.getElementById(`player${i}Status`).textContent = r ? `Rated ${r.rating}` : '';
-    document.getElementById(`player${i}Status`).className = 'player-status rated';
-  });
-
-  renderRoundTracker();
-  renderHistory();
-
-  // Button
-  const nextBtn = document.getElementById('resultsNextBtn');
-  if (allPassed) {
-    nextBtn.textContent = "🎉 WE'RE EATING THIS!";
-    nextBtn.onclick = () => endGame(currentProposal, avgRating);
-  } else if (round >= MAX_ROUNDS - 1) {
-    nextBtn.textContent = "⏰ Time's up! See the winner...";
-    nextBtn.onclick = () => pickBestFromHistory();
-  } else {
-    const nextProposerIdx = (proposerIndex + 1) % players.length;
-    nextBtn.textContent = `➡️ Round ${round + 2}: ${players[nextProposerIdx].name}'s turn to propose`;
-    nextBtn.onclick = () => nextRound();
-  }
-}
-
-function nextRound() {
-  round++;
-  proposerIndex = (proposerIndex + 1) % players.length;
-  currentProposal = null;
-  roundRatings = [];
-  showPickScreen();
-}
-
-function pickBestFromHistory() {
-  // Find the round with highest average rating
-  let best = roundHistory[0];
-  for (let i = 1; i < roundHistory.length; i++) {
-    if (roundHistory[i].avgRating > best.avgRating) {
-      best = roundHistory[i];
+      btn.textContent = 'Spin again';
     }
   }
-  endGame({ emoji: best.emoji, name: best.name, foodText: best.foodText }, best.avgRating);
+
+  requestAnimationFrame(animate);
 }
 
-// ============================================================
-//  END GAME
-// ============================================================
-function endGame(proposal, avgRating) {
-  gameOver = true;
-  hideAll();
-  document.getElementById('playersContainer').style.display = 'none';
-  document.getElementById('roundTracker').style.display = 'none';
-  document.getElementById('historyBar').style.display = 'none';
-
-  playCelebration();
-  launchConfetti();
-
-  const ws = document.getElementById('winnerScreen');
-  ws.classList.add('show');
-  document.getElementById('winnerText').innerHTML = `${proposal.emoji}<br>${proposal.name}`;
-  document.getElementById('winnerSub').textContent = `Average rating: ${avgRating}/10`;
+// ---- AUDIO (subtle tick) ----
+let audioCtx;
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
 }
 
-// ============================================================
-//  RESET
-// ============================================================
-function resetGame() {
-  gameOver = false;
-  round = 0;
-  proposerIndex = 0;
-  currentProposal = null;
-  ratingPlayerIndex = 0;
-  roundRatings = [];
-  roundHistory = [];
-  selectedRating = 0;
-  subPhase = 'pick';
-
-  players.forEach(p => { p.tokens = 3; });
-
-  document.getElementById('playersContainer').style.display = 'flex';
-  document.getElementById('roundTracker').style.display = 'flex';
-  document.getElementById('historyBar').style.display = 'flex';
-
-  loadFoods();
-  buildPlayersRow();
-  renderRoundTracker();
-  renderHistory();
-  showPickScreen();
+function tickSound() {
+  try {
+    const ctx = getAudio();
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = 800 + Math.random() * 400;
+    gain.gain.setValueAtTime(0.04, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.05);
+  } catch(e) {}
 }
 
-// Also for pass screen continue
-function continueAfterPass() {
-  // handled by dynamic onclick
-}
-
-// ============================================================
-//  EDIT FOOD LIST
-// ============================================================
-function openEditModal() {
-  document.getElementById('foodListEditor').value = foods.join('\n');
+// ---- EDIT MODAL ----
+function openEdit() {
+  document.getElementById('editor').value = options.join('\n');
   document.getElementById('editModal').classList.add('show');
 }
-function closeEditModal() { document.getElementById('editModal').classList.remove('show'); }
-function saveEditModal() {
-  const lines = document.getElementById('foodListEditor').value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  if (lines.length < 2) { alert("Add at least 2 options!"); return; }
-  foods = lines;
-  saveFoods();
-  closeEditModal();
-  resetGame();
+
+function closeEdit() {
+  document.getElementById('editModal').classList.remove('show');
 }
 
-// ============================================================
-//  EDIT NAMES
-// ============================================================
-function openNamesModal() {
-  const container = document.getElementById('namesInputs');
-  container.innerHTML = '';
-  players.forEach((p, i) => {
-    const group = document.createElement('div');
-    group.className = 'name-input-group';
-    group.innerHTML = `<label>Player ${i+1}</label><input type="text" id="name${i}Input" maxlength="12" value="${p.name}" placeholder="${p.name}">`;
-    container.appendChild(group);
-  });
-  document.getElementById('namesModal').classList.add('show');
-}
-function closeNamesModal() { document.getElementById('namesModal').classList.remove('show'); }
-function saveNames() {
-  const defaults = ['David', 'Holley', 'Eirene'];
-  players.forEach((p, i) => {
-    const input = document.getElementById(`name${i}Input`);
-    const val = input ? input.value.trim() : '';
-    p.name = val || defaults[i];
-    p.shortName = p.name.length > 7 ? p.name.substring(0, 7) : p.name;
-  });
-  localStorage.setItem('dinnerPlayers3', JSON.stringify(players.map(p => ({ name: p.name, shortName: p.shortName }))));
-  buildPlayersRow();
-  closeNamesModal();
+function saveEdit() {
+  const lines = document.getElementById('editor').value
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+  if (lines.length < 2) { alert('Need at least 2 options.'); return; }
+  options = lines;
+  saveOptions();
+  closeEdit();
+  drawWheel();
 }
 
-// ============================================================
-//  CONFETTI
-// ============================================================
-function launchConfetti() {
-  const canvas = document.getElementById('confetti-canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-  const pieces = [];
-  const colors = ['#FF6B8A','#FF8C42','#FFD166','#06D6A0','#118AB2','#9B5DE5','#EF476F'];
-  for (let i = 0; i < 150; i++) {
-    pieces.push({
-      x: Math.random() * canvas.width, y: Math.random() * canvas.height - canvas.height,
-      w: Math.random() * 10 + 5, h: Math.random() * 6 + 3,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      rotation: Math.random() * 360, rotSpeed: (Math.random() - 0.5) * 10,
-      vx: (Math.random() - 0.5) * 4, vy: Math.random() * 3 + 2, opacity: 1
-    });
-  }
-  let frame = 0;
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let alive = false;
-    pieces.forEach(p => {
-      if (p.opacity <= 0) return; alive = true;
-      p.x += p.vx; p.y += p.vy; p.rotation += p.rotSpeed; p.vy += 0.05;
-      if (frame > 80) p.opacity -= 0.015;
-      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.rotation * Math.PI) / 180);
-      ctx.globalAlpha = Math.max(0, p.opacity); ctx.fillStyle = p.color;
-      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
-    });
-    frame++;
-    if (alive && frame < 200) requestAnimationFrame(draw);
-    else ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-  draw();
-}
-
-window.addEventListener('resize', () => {
-  const c = document.getElementById('confetti-canvas');
-  c.width = window.innerWidth; c.height = window.innerHeight;
-});
-
-// ============================================================
-//  BOOT
-// ============================================================
-init();
+// ---- INIT ----
+loadOptions();
+drawWheel();
 </script>
 </body>
 </html>
