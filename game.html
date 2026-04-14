@@ -70,10 +70,6 @@ function loseLife() {
   }
 }
 
-function spawnConfetti() {
-  // Filled in Task 9
-}
-
 // ─── DRAW: BACKGROUND ─────────────────────────────────────────────────────────
 function drawBackground() {
   const z = STATE.zone;
@@ -334,6 +330,463 @@ function flap() {
 canvas.addEventListener('click', flap);
 canvas.addEventListener('touchstart', (e) => { e.preventDefault(); flap(); }, { passive: false });
 
+// ─── OBSTACLES ────────────────────────────────────────────────────────────────
+function spawnObstacle() {
+  const z = STATE.zone;
+  const gapCenter = CONFIG.groundH + CONFIG.obstacleGap + Math.random() * (canvasH - CONFIG.groundH - CONFIG.obstacleGap * 2.2 - 60);
+  const x = canvasW + 10;
+
+  if (z === 0 || z === 2) {
+    STATE.obstacles.push({
+      type: 'windmill', x,
+      gapCenter,
+      topH: gapCenter - CONFIG.obstacleGap / 2,
+      bottomY: gapCenter + CONFIG.obstacleGap / 2,
+      bottomH: canvasH - CONFIG.groundH - (gapCenter + CONFIG.obstacleGap / 2),
+      w: CONFIG.obstacleW,
+      angle: 0,
+    });
+  } else {
+    if (Math.random() < 0.5) {
+      STATE.obstacles.push({ type: 'tentacle', x, gapCenter, w: CONFIG.obstacleW, collisionTopY: 0, collisionH: 0 });
+    } else {
+      STATE.obstacles.push({ type: 'fog', x, gapCenter, w: 70 });
+    }
+  }
+}
+
+function spawnAiRobot() {
+  STATE.obstacles.push({
+    type: 'ai_robot',
+    x: canvasW + 20,
+    cx: canvasW + 20,
+    cy: 80 + Math.random() * (canvasH - CONFIG.groundH - 140),
+    w: 50, h: 50,
+    speed: (CONFIG.baseScrollSpeed + STATE.distance * 0.0003) * 1.2,
+  });
+}
+
+function updateObstacles() {
+  const lastX = STATE.obstacles.filter(o => o.type !== 'ai_robot').length
+    ? STATE.obstacles.filter(o => o.type !== 'ai_robot').slice(-1)[0].x
+    : -999;
+  if (canvasW - lastX > CONFIG.minObstacleSpacing) spawnObstacle();
+
+  STATE.obstacles.forEach(o => {
+    if (o.type === 'ai_robot') { o.x -= o.speed; o.cx = o.x; }
+    else { o.x -= STATE.scrollSpeed; }
+    if (o.type === 'windmill') o.angle += 0.025;
+  });
+
+  STATE.obstacles = STATE.obstacles.filter(o => o.x + (o.w || 60) + 60 > 0);
+}
+
+function drawObstacles() {
+  STATE.obstacles.forEach(o => {
+    if (o.type === 'windmill') drawWindmill(o);
+    else if (o.type === 'tentacle') drawTentacle(o);
+    else if (o.type === 'fog') drawFogWall(o);
+    else if (o.type === 'ai_robot') drawAiRobot(o);
+  });
+}
+
+function drawWindmill(o) {
+  ctx.fillStyle = '#8B7355';
+  ctx.fillRect(o.x, 0, o.w, o.topH);
+  ctx.fillRect(o.x, o.bottomY, o.w, o.bottomH);
+  const bx = o.x + o.w / 2;
+  const by = o.topH;
+  ctx.save();
+  ctx.translate(bx, by);
+  ctx.rotate(o.angle);
+  ctx.fillStyle = '#a0855b';
+  for (let i = 0; i < 4; i++) {
+    ctx.save(); ctx.rotate((Math.PI / 2) * i);
+    ctx.fillRect(-3, -28, 6, 28); ctx.restore();
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#6b5335'; ctx.lineWidth = 2;
+  ctx.strokeRect(o.x, 0, o.w, o.topH);
+  ctx.strokeRect(o.x, o.bottomY, o.w, o.bottomH);
+}
+
+function drawTentacle(o) {
+  const h = (canvasH - CONFIG.groundH) * 0.55 + Math.sin(STATE.frame * 0.04 + o.x * 0.01) * 30;
+  const topY = canvasH - CONFIG.groundH - h;
+  o.collisionTopY = topY;
+  o.collisionH = h;
+  ctx.fillStyle = '#1a7a3a';
+  ctx.beginPath();
+  ctx.moveTo(o.x, canvasH - CONFIG.groundH);
+  ctx.bezierCurveTo(o.x - 15, topY + h * 0.6, o.x + 15, topY + h * 0.3, o.x + o.w / 2, topY);
+  ctx.bezierCurveTo(o.x + o.w - 15, topY + h * 0.3, o.x + o.w + 15, topY + h * 0.6, o.x + o.w, canvasH - CONFIG.groundH);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#0d5522'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#0d8a3a';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.arc(o.x + o.w / 2 + Math.sin(i) * 5, topY + h * 0.2 + i * (h * 0.15), 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawFogWall(o) {
+  ctx.fillStyle = 'rgba(180,200,220,0.75)';
+  ctx.fillRect(o.x, 0, o.w, o.gapCenter - CONFIG.obstacleGap / 2);
+  ctx.fillRect(o.x, o.gapCenter + CONFIG.obstacleGap / 2, o.w, canvasH - CONFIG.groundH - (o.gapCenter + CONFIG.obstacleGap / 2));
+}
+
+function drawAiRobot(o) {
+  ctx.save();
+  ctx.font = '38px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🤖', o.cx, o.cy);
+  ctx.font = 'bold 11px Arial'; ctx.fillStyle = '#ff4444'; ctx.textBaseline = 'top';
+  ctx.fillText("DAD'S AI", o.cx, o.cy + 22);
+  ctx.restore();
+}
+
+// ─── COLLECTIBLES ─────────────────────────────────────────────────────────────
+const COLLECTIBLES_DEF = [
+  { type: 'ramen',   emoji: '🍜', color: '#ff6b35', prob: 0.30 },
+  { type: 'mac',     emoji: '🧀', color: '#ffcc00', prob: 0.25 },
+  { type: 'baileys', emoji: '🥛', color: '#d4a017', prob: 0.15 },
+  { type: 'bunny',   emoji: '🐱', color: '#ffaacc', prob: 0.20 },
+  { type: 'thrift',  emoji: '👗', color: '#9b59b6', prob: 0.10 },
+];
+
+function spawnCollectible() {
+  const r = Math.random(); let cum = 0; let chosen = COLLECTIBLES_DEF[0];
+  for (const c of COLLECTIBLES_DEF) { cum += c.prob; if (r < cum) { chosen = c; break; } }
+  if (chosen.type === 'thrift' && STATE.zone !== 2) chosen = COLLECTIBLES_DEF[0];
+  const y = 60 + Math.random() * (canvasH - CONFIG.groundH - 120);
+  STATE.collectibles.push({ ...chosen, x: canvasW + 20, y, collected: false, alpha: 1 });
+}
+
+function updateCollectibles() {
+  const spacing = 500 + Math.random() * 300;
+  const lastX = STATE.collectibles.length ? STATE.collectibles[STATE.collectibles.length - 1].x : -999;
+  if (canvasW - lastX > spacing || STATE.collectibles.length === 0) spawnCollectible();
+  STATE.collectibles.forEach(c => { c.x -= STATE.scrollSpeed; if (c.collected) c.alpha -= 0.08; });
+  STATE.collectibles = STATE.collectibles.filter(c => c.x + 40 > 0 && c.alpha > 0);
+}
+
+function drawCollectibles() {
+  const s = CONFIG.collectibleSize;
+  STATE.collectibles.forEach(c => {
+    ctx.save(); ctx.globalAlpha = c.alpha;
+    ctx.beginPath(); ctx.arc(c.x, c.y, s * 0.8, 0, Math.PI * 2);
+    ctx.fillStyle = c.color + '44'; ctx.fill();
+    ctx.font = `${s}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(c.emoji, c.x, c.y); ctx.restore();
+  });
+}
+
+function applyCollectible(c) {
+  const p = STATE.player; c.collected = true;
+  if (c.type === 'ramen') {
+    p.speedBoost = true; p.speedTimer = 180; STATE.score += 100;
+    showFloatingText(c.x, c.y, '+100 🍜 SPEED!', '#ff6b35');
+  } else if (c.type === 'mac') {
+    p.multiplier = 2; p.multiplierTimer = 300; STATE.score += 50;
+    showFloatingText(c.x, c.y, '2x MAC POWER', '#ffcc00');
+  } else if (c.type === 'baileys') {
+    p.invincible = true; p.invincibleTimer = 180; STATE.score += 50;
+    showFloatingText(c.x, c.y, "BAILEY'S! INVINCIBLE", '#d4a017');
+  } else if (c.type === 'bunny') {
+    if (p.lives < 3) p.lives++; STATE.score += 200;
+    showFloatingText(c.x, c.y, '+LIFE 🐱 BUNNY!', '#ffaacc');
+  } else if (c.type === 'thrift') {
+    STATE.score += 500;
+    showFloatingText(c.x, c.y, '+500 GOODWILL SCORE', '#9b59b6');
+  }
+}
+
+const floatingTexts = [];
+function showFloatingText(x, y, text, color) {
+  floatingTexts.push({ x, y, text, color, alpha: 1, vy: -1.5 });
+}
+function updateFloatingTexts() {
+  floatingTexts.forEach(t => { t.y += t.vy; t.alpha -= 0.018; });
+  floatingTexts.splice(0, floatingTexts.length, ...floatingTexts.filter(t => t.alpha > 0));
+}
+function drawFloatingTexts() {
+  floatingTexts.forEach(t => {
+    ctx.save(); ctx.globalAlpha = t.alpha;
+    ctx.font = 'bold 16px Arial'; ctx.fillStyle = t.color;
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 3;
+    ctx.textAlign = 'center';
+    ctx.strokeText(t.text, t.x, t.y); ctx.fillText(t.text, t.x, t.y);
+    ctx.restore();
+  });
+}
+
+// ─── COLLISIONS ───────────────────────────────────────────────────────────────
+function checkCollisions() {
+  const p = STATE.player;
+  const px = CONFIG.playerX, py = p.y;
+  const pw = p.w * 0.7, ph = p.h * 0.7;
+
+  if (!p.invincible) {
+    for (const o of STATE.obstacles) {
+      if (o.x > px + pw || o.x + (o.w || 50) < px - pw) continue;
+      if (o.type === 'windmill' || o.type === 'fog') {
+        if (py - ph / 2 < o.topH) { loseLife(); p.wobble = 20; return; }
+        if (py + ph / 2 > o.bottomY) { loseLife(); p.wobble = 20; return; }
+      } else if (o.type === 'tentacle') {
+        if (o.collisionTopY !== undefined && py + ph / 2 > o.collisionTopY) {
+          loseLife(); p.wobble = 20; return;
+        }
+      } else if (o.type === 'ai_robot') {
+        if (Math.hypot(px - o.cx, py - o.cy) < 28) {
+          loseLife(); p.wobble = 30;
+          showFloatingText(px, py - 40, "Sorry, Eirene. Dad let the AI drive again.", '#ff4444');
+          return;
+        }
+      }
+    }
+  }
+
+  for (const c of STATE.collectibles) {
+    if (c.collected) continue;
+    if (Math.hypot(px - c.x, py - c.y) < CONFIG.collectibleSize * 0.9) applyCollectible(c);
+  }
+}
+
+// ─── HUD ──────────────────────────────────────────────────────────────────────
+function drawHUD() {
+  const p = STATE.player;
+  // Score
+  ctx.save(); ctx.font = 'bold 22px Arial'; ctx.fillStyle = '#fff';
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3;
+  ctx.textAlign = 'right';
+  ctx.strokeText(`${STATE.score}`, canvasW - 16, 34);
+  ctx.fillText(`${STATE.score}`, canvasW - 16, 34); ctx.restore();
+
+  // Lives (Bunny icons)
+  for (let i = 0; i < 3; i++) {
+    ctx.save(); ctx.globalAlpha = i < p.lives ? 1 : 0.25;
+    ctx.font = '26px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🐱', 18 + i * 36, 20); ctx.restore();
+  }
+
+  // Power-up bar
+  let powerLabel = '', powerColor = '', powerFrac = 0;
+  if (p.invincible) { powerLabel = "BAILEY'S 🥛"; powerColor = '#d4a017'; powerFrac = p.invincibleTimer / 180; }
+  else if (p.speedBoost) { powerLabel = 'RAMEN SPEED 🍜'; powerColor = '#ff6b35'; powerFrac = p.speedTimer / 180; }
+  else if (p.multiplier > 1) { powerLabel = '2x MAC 🧀'; powerColor = '#ffcc00'; powerFrac = p.multiplierTimer / 300; }
+  if (powerLabel) {
+    const bx = canvasW - 140, by = 44, bw = 128, bh = 10;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = powerColor; ctx.fillRect(bx, by, bw * powerFrac, bh);
+    ctx.font = '11px Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText(powerLabel, bx + bw / 2, by + bh + 12);
+  }
+
+  // Progress bar
+  const barW = canvasW * 0.4, barX = (canvasW - barW) / 2;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(barX, 8, barW, 6);
+  ctx.fillStyle = '#fff'; ctx.fillRect(barX, 8, barW * Math.min(1, STATE.distance / CONFIG.totalDistance), 6);
+  ctx.font = '14px Arial'; ctx.textAlign = 'center';
+  ctx.fillText('✈️', barX + barW * Math.min(1, STATE.distance / CONFIG.totalDistance), 22);
+}
+
+// ─── SCREEN: START ────────────────────────────────────────────────────────────
+function drawStartScreen() {
+  const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+  g.addColorStop(0, '#1a2a5e'); g.addColorStop(1, '#0d1b3e');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // Stars
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  for (let i = 0; i < 60; i++) {
+    ctx.beginPath();
+    ctx.arc((i * 137.5) % canvasW, (i * 97.3) % (canvasH * 0.7), 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Animated plane
+  const bobY = canvasH * 0.38 + Math.sin(STATE.frame * 0.04) * 8;
+  STATE.player.y = bobY;
+  drawPlane();
+
+  ctx.save(); ctx.textAlign = 'center';
+  ctx.font = 'bold 32px Arial'; ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#4a8fdd'; ctx.shadowBlur = 20;
+  ctx.fillText("✈️ EIRENE'S GREAT ESCAPE", canvasW / 2, canvasH * 0.22);
+  ctx.font = '18px Arial'; ctx.fillStyle = '#87ceeb'; ctx.shadowBlur = 0;
+  ctx.fillText('Amsterdam → Home', canvasW / 2, canvasH * 0.30); ctx.restore();
+
+  ctx.save(); ctx.textAlign = 'center'; ctx.font = '14px Arial';
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillText('Hi Eirene! Dad built this at 5am using AI.', canvasW / 2, canvasH * 0.56);
+  ctx.fillText('Yes, he knows. Get home safe. — Dad 🤖', canvasW / 2, canvasH * 0.62); ctx.restore();
+
+  const pulse = 0.85 + Math.sin(STATE.frame * 0.06) * 0.15;
+  ctx.save(); ctx.globalAlpha = pulse; ctx.textAlign = 'center';
+  const btnW = 200, btnH = 50, btnX = canvasW / 2 - btnW / 2, btnY = canvasH * 0.72;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(btnX, btnY, btnW, btnH, 12);
+  else ctx.rect(btnX, btnY, btnW, btnH);
+  ctx.fillStyle = 'rgba(74,143,221,0.3)'; ctx.fill();
+  ctx.strokeStyle = '#4a8fdd'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#fff';
+  ctx.fillText('TAP TO START ✈️', canvasW / 2, btnY + 32); ctx.restore();
+}
+
+// ─── PARTICLES (CONFETTI) ─────────────────────────────────────────────────────
+function spawnConfetti() {
+  const colors = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff6fc8','#fff'];
+  for (let i = 0; i < 90; i++) {
+    STATE.particles.push({
+      x: canvasW * Math.random(), y: canvasH * 0.3 * Math.random(),
+      vx: (Math.random() - 0.5) * 5, vy: Math.random() * 2 + 1,
+      w: 6 + Math.random() * 8, h: 4 + Math.random() * 6,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rot: Math.random() * Math.PI * 2, rotV: (Math.random() - 0.5) * 0.15, alpha: 1,
+    });
+  }
+}
+function updateParticles() {
+  STATE.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.rot += p.rotV; if (p.y > canvasH * 0.9) p.alpha -= 0.02; });
+  STATE.particles = STATE.particles.filter(p => p.alpha > 0);
+}
+function drawParticles() {
+  STATE.particles.forEach(p => {
+    ctx.save(); ctx.globalAlpha = p.alpha; ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    ctx.fillStyle = p.color; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+  });
+}
+
+// ─── SCREEN: DEATH ────────────────────────────────────────────────────────────
+function wrapText(context, text, x, y, maxWidth, lineH) {
+  const words = text.split(' '); let line = '', currentY = y;
+  for (const word of words) {
+    const test = line ? line + ' ' + word : word;
+    if (context.measureText(test).width > maxWidth && line) {
+      context.fillText(line, x, currentY); line = word; currentY += lineH;
+    } else { line = test; }
+  }
+  context.fillText(line, x, currentY);
+}
+
+function drawDeadScreen() {
+  ctx.fillStyle = 'rgba(180,20,20,0.88)'; ctx.fillRect(0, 0, canvasW, canvasH);
+  ctx.save(); ctx.textAlign = 'center';
+  ctx.font = '72px Arial'; ctx.fillText('🦑', canvasW / 2, canvasH * 0.18);
+  ctx.font = 'bold 26px Arial'; ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#000'; ctx.shadowBlur = 10;
+  wrapText(ctx, DEATH_QUOTES[STATE.deathQuoteIdx], canvasW / 2, canvasH * 0.34, canvasW * 0.8, 34);
+  ctx.font = '20px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.shadowBlur = 0;
+  ctx.fillText(`Score: ${STATE.score}`, canvasW / 2, canvasH * 0.58);
+  const bw = 180, bh = 50, bx = canvasW / 2 - bw / 2, by = canvasH * 0.68;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 12); else ctx.rect(bx, by, bw, bh);
+  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#fff';
+  ctx.fillText('TRY AGAIN ✈️', canvasW / 2, by + 32); ctx.restore();
+}
+
+// ─── SCREEN: WIN ──────────────────────────────────────────────────────────────
+function drawWinScreen() {
+  const g = ctx.createLinearGradient(0, 0, 0, canvasH);
+  g.addColorStop(0, '#ff9a3c'); g.addColorStop(1, '#c8e6c9');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, canvasW, canvasH);
+  drawParticles();
+  ctx.save(); ctx.textAlign = 'center';
+  ctx.font = '64px Arial'; ctx.fillText('🐱', canvasW / 2, canvasH * 0.16);
+  ctx.font = 'bold 28px Arial'; ctx.fillStyle = '#1a3a1a';
+  ctx.shadowColor = 'rgba(255,255,255,0.8)'; ctx.shadowBlur = 12;
+  ctx.fillText('EIRENE IS HOME.', canvasW / 2, canvasH * 0.34);
+  ctx.font = 'bold 22px Arial';
+  ctx.fillText('Bunny has been waiting. 🐱', canvasW / 2, canvasH * 0.44);
+  ctx.font = '18px Arial'; ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 0;
+  ctx.fillText(`Final Score: ${STATE.score}`, canvasW / 2, canvasH * 0.56);
+  ctx.font = '13px Arial'; ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillText('Made by Dad at 5am with AI ☕🤖', canvasW / 2, canvasH * 0.63);
+  const bw = 200, bh = 50, bx = canvasW / 2 - bw / 2, by = canvasH * 0.72;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 12); else ctx.rect(bx, by, bw, bh);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
+  ctx.strokeStyle = '#1a3a1a'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = 'bold 20px Arial'; ctx.fillStyle = '#1a3a1a';
+  ctx.fillText('PLAY AGAIN ✈️', canvasW / 2, by + 32); ctx.restore();
+}
+
+// ─── RANDOM EVENTS ────────────────────────────────────────────────────────────
+function spawnHotDogGuy() {
+  STATE.hotDogGuy = { x: canvasW + 30, y: canvasH - CONFIG.groundH - 30, speed: STATE.scrollSpeed * 2.5 };
+}
+
+function updateHotDogGuy() {
+  if (!STATE.hotDogGuy) return;
+  STATE.hotDogGuy.x -= STATE.hotDogGuy.speed;
+  if (STATE.hotDogGuy.x < -60) { STATE.hotDogGuy = null; return; }
+  if (Math.hypot(CONFIG.playerX - STATE.hotDogGuy.x, STATE.player.y - STATE.hotDogGuy.y) < 35) {
+    STATE.score += 200;
+    showFloatingText(STATE.hotDogGuy.x, STATE.hotDogGuy.y - 20, '+200 🌭 HOT DOG!', '#ff8c00');
+    STATE.hotDogGuy = null;
+  }
+}
+
+function drawHotDogGuy() {
+  if (!STATE.hotDogGuy) return;
+  ctx.save();
+  ctx.font = '36px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('🌭', STATE.hotDogGuy.x, STATE.hotDogGuy.y);
+  ctx.font = '28px Arial'; ctx.textBaseline = 'bottom';
+  ctx.fillText('🏃', STATE.hotDogGuy.x, STATE.hotDogGuy.y - 30);
+  ctx.restore();
+}
+
+function updateRandomEvents() {
+  // Old Gregg warning (Atlantic only)
+  if (STATE.zone === 1 && STATE.oldGreggWarningTimer <= 0 && Math.random() < 0.003) {
+    STATE.oldGreggWarningTimer = 90;
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        if (STATE.screen === 'game') STATE.obstacles.push({ type: 'tentacle', x: canvasW + 10 + i * 200, gapCenter: canvasH * 0.4, w: CONFIG.obstacleW, collisionTopY: 0, collisionH: 0 });
+      }, i * 600);
+    }
+  }
+  if (STATE.oldGreggWarningTimer > 0) STATE.oldGreggWarningTimer--;
+
+  // IASYL flash
+  STATE.nextIasyl--;
+  if (STATE.nextIasyl <= 0) { STATE.iasylTimer = 80; STATE.nextIasyl = 1200 + Math.random() * 1200; }
+  if (STATE.iasylTimer > 0) STATE.iasylTimer--;
+
+  // AI robot
+  STATE.nextAiRobot--;
+  if (STATE.nextAiRobot <= 0) { spawnAiRobot(); STATE.nextAiRobot = 700 + Math.random() * 800; }
+
+  // Hot dog guy
+  STATE.nextHotDog--;
+  if (STATE.nextHotDog <= 0 && !STATE.hotDogGuy) { spawnHotDogGuy(); STATE.nextHotDog = 1800 + Math.random() * 1200; }
+
+  updateHotDogGuy();
+}
+
+function drawRandomEventOverlays() {
+  // Old Gregg warning
+  if (STATE.oldGreggWarningTimer > 60) {
+    const alpha = Math.min(1, (STATE.oldGreggWarningTimer - 60) / 30) * 0.85;
+    ctx.save(); ctx.fillStyle = `rgba(0,200,80,${alpha})`; ctx.fillRect(0, 0, canvasW, canvasH);
+    ctx.font = 'bold 38px Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText("I'M OLD GREGG!", canvasW / 2, canvasH / 2);
+    ctx.font = '22px Arial'; ctx.fillText('🦑🦑🦑', canvasW / 2, canvasH / 2 + 48); ctx.restore();
+  }
+  // IASYL flash
+  if (STATE.iasylTimer > 0) {
+    const alpha = Math.min(1, STATE.iasylTimer / 30) * 0.75;
+    ctx.save(); ctx.fillStyle = `rgba(220,20,20,${alpha})`; ctx.fillRect(0, 0, canvasW, canvasH);
+    ctx.font = 'bold 32px Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText('STOP TALKING.', canvasW / 2, canvasH / 2 - 20);
+    ctx.fillText('STOP TALKING.', canvasW / 2, canvasH / 2 + 28); ctx.restore();
+  }
+  drawHotDogGuy();
+}
+
 // ─── GAME LOOP ────────────────────────────────────────────────────────────────
 function loop() {
   update();
@@ -344,32 +797,23 @@ function loop() {
 function update() {
   STATE.frame++;
   if (STATE.screen === 'start') return;
-  if (STATE.screen === 'win') return;
+  if (STATE.screen === 'win') { updateParticles(); return; }
   if (STATE.screen === 'dead') return;
 
-  // ── Player physics ──
   const p = STATE.player;
   p.vy += CONFIG.gravity;
   p.y += p.vy;
 
-  // Power-up timers
   if (p.invincible) { p.invincibleTimer--; if (p.invincibleTimer <= 0) p.invincible = false; }
   if (p.speedBoost) { p.speedTimer--; if (p.speedTimer <= 0) { p.speedBoost = false; STATE.scrollSpeed = CONFIG.baseScrollSpeed + STATE.distance * 0.0003; } }
   if (p.multiplier > 1) { p.multiplierTimer--; if (p.multiplierTimer <= 0) p.multiplier = 1; }
 
-  // Out of bounds → die
-  if (p.y - p.h / 2 < 0 || p.y + p.h / 2 > canvasH - CONFIG.groundH) {
-    loseLife();
-    return;
-  }
+  if (p.y - p.h / 2 < 0 || p.y + p.h / 2 > canvasH - CONFIG.groundH) { loseLife(); return; }
 
-  // Scroll speed ramp
   STATE.scrollSpeed = CONFIG.baseScrollSpeed + STATE.distance * 0.0003;
   if (p.speedBoost) STATE.scrollSpeed *= 1.6;
-
   STATE.distance += STATE.scrollSpeed;
 
-  // Zone transitions
   const newZone = Math.min(2, Math.floor(STATE.distance / CONFIG.zoneLength));
   if (newZone !== STATE.zone) {
     STATE.zone = newZone;
@@ -378,30 +822,32 @@ function update() {
   }
   if (STATE.zoneLabel.alpha > 0) STATE.zoneLabel.alpha -= 0.008;
 
-  // Score: distance points
   STATE.score += Math.floor(STATE.player.multiplier);
 
-  // Win condition
-  if (STATE.distance >= CONFIG.totalDistance) {
-    STATE.screen = 'win';
-    spawnConfetti();
-    return;
-  }
+  if (STATE.distance >= CONFIG.totalDistance) { STATE.screen = 'win'; spawnConfetti(); return; }
+
+  updateObstacles();
+  updateCollectibles();
+  updateFloatingTexts();
+  checkCollisions();
+  updateRandomEvents();
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvasW, canvasH);
-
-  if (STATE.screen === 'start') {
-    ctx.fillStyle = '#87CEEB';
-    ctx.fillRect(0, 0, canvasW, canvasH);
-    return;
-  }
+  if (STATE.screen === 'start') { drawStartScreen(); return; }
+  if (STATE.screen === 'dead') { drawDeadScreen(); return; }
+  if (STATE.screen === 'win') { drawWinScreen(); return; }
 
   drawBackground();
   drawGround();
+  drawObstacles();
+  drawCollectibles();
+  drawFloatingTexts();
   drawPlane();
   drawZoneLabel();
+  drawHUD();
+  drawRandomEventOverlays();
 }
 
 loop();
